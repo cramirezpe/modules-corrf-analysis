@@ -1,12 +1,8 @@
 from pathlib import Path
 import os
 
-# Load modules from where they are, then return 
-_ = Path('.').resolve()
-os.chdir('/global/homes/c/cramirez/Work/hanyu_lya_box')
-from notebook_funcs.cf_helper import CFComputations
-from notebook_funcs.read_theory_to_xi import ReadXiCoLoRe, ReadPkCoLoRe, CAMBCorrelation, ReadXiCoLoReFromPk
-os.chdir(_)
+from cf_helper import CFComputations
+from read_theory_to_xi import ReadXiCoLoRe, ReadPkCoLoRe, CAMBCorrelation, ReadXiCoLoReFromPk
 
 import numpy as np
 from functools import cached_property
@@ -24,21 +20,35 @@ class FileFuncs:
         return Path(basedir) / f'nside_{nside}' / rsd / f'{rmin}_{rmax}' / f'{zmin}_{zmax}' 
 
     @staticmethod
-    def get_available_pixels(path):
+    def get_available_pixels(path, boxes=None):
         available_pixels = []
-        for _subdir in path.iterdir():
-            if (_subdir / '0_DD.dat').is_file() or (_subdir / 'DD.dat').is_file():
-                available_pixels.append(_subdir.name)
+
+        if boxes is None:
+            boxes = [x.name for x in path.iterdir()]
+
+        for box in boxes:
+            _boxdir = path / str(box)
+            for _subdir in _boxdir.iterdir():
+                if (_subdir / '0_DD.dat').is_file() or (_subdir / 'DD.dat').is_file():
+                    available_pixels.append(_subdir)
         return available_pixels
 
     @classmethod
-    def mix_sims(cls, path, pixels=None, data_rand_ratio=1):
+    def mix_sims(cls, path, boxes=None, pixels=None, data_rand_ratio=1):
+        boxes = [x.name for x in path.iterdir()] if boxes is None else boxes
+
         if pixels is None:
-            pixels = cls.get_available_pixels(path)
-        boxes = []
-        for pixel in pixels:
-            boxes.append( CFComputations(path / str(pixel), N_data_rand_ratio=data_rand_ratio, label=str(pixel)) )
-        return boxes
+            paths = cls.get_available_pixels(path, boxes=boxes)
+        else:
+            paths = []
+            for box in boxes:
+                for pixel in pixels:
+                    paths.append( path / str(box) / str(pixel) )
+
+        output = []
+        for _boxpath in paths:
+            output.append( CFComputations(_boxpath, N_data_rand_ratio=data_rand_ratio) )
+        return output
 
 class fit_bias:
     def __init__(self, boxes, z, poles, theory, bias0=3.5):
