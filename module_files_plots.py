@@ -179,10 +179,7 @@ class Plots:
         xi_th = theory.get_npole(n=pole, z=z, bias=bias, rsd=rsd)
         if apply_lognormal:
             xi_th = from_xi_g_to_xi_ln(xi_th)
-        try:
-            ax.plot(theory.pk0[0], theory.pk0[0]**2*xi_th, **plot_args) #compatibility with theories from pk
-        except AttributeError:
-            ax.plot(theory.r, theory.r**2*xi_th, **plot_args)
+        ax.plot(theory.r, theory.r**2*xi_th, **plot_args)
         ax.set_xlabel(r'$r [Mpc/h]$')
         ax.set_ylabel(r'$r^2 \xi(r)$')
 
