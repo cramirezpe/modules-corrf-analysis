@@ -472,6 +472,7 @@ class ReadPkCoLoRe(ReadTheoryCoLoRe):
 
 class ReadXiCoLoRe(ReadTheoryCoLoRe):
     def get_theory(self, z, bias=None):
+        logger.debug(f'Getting theory for z: {z} and bias: {bias}')
         ks, pdd, pdm, pmm = np.loadtxt(self.box_path / f'out_xi_srcs_pop{self.source-1}_z{z:.3f}.txt', unpack=True)
         if self.tracer == 'dd':
             if bias is None:
