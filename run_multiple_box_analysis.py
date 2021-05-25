@@ -28,6 +28,13 @@ def main():
         help='Path to CoLoRe output to read theory. (default: David sim 1000)'
     )
 
+    parser.add_argument('--boxes',
+        nargs='+',
+        type=int,
+        default=None,
+        help='Boxes to use 1000, 1001... (default: use all available)'
+    )
+
     parser.add_argument('--source',
         type=int,
         default=2,
@@ -84,6 +91,12 @@ def main():
         help='nside of the pixelization (used to compute errorbars through dispersion of measurements) (default: 2)',
     )
 
+    parser.add_argument('--pixels',
+        type=int,
+        nargs='+',
+        default=None,
+        help='Healpix pixels to select (default: use all available)')
+
     parser.add_argument('--multipoles',
         nargs= '+',
         type=int,
@@ -137,7 +150,9 @@ def do_plotting(args):
             args.rmin, args.rmax,
             args.zmin, args.zmax, 
             args.nside
-        )
+        ),
+        boxes=args.boxes,
+        pixels=args.pixels
     )
 
     logger.info('Setting zeff')
