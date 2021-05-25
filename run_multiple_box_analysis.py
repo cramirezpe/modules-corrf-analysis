@@ -1,11 +1,11 @@
 import argparse
 from available_sims import search_corrs
+import logging
+logging.getLogger('matplotlib').setLevel(logging.WARNING)
 from module_files_plots import *
 import sys
 import logging
 import ast
-logger = logging.getLogger(__name__)
-logging.getLogger('matplotlib').setLevel(logging.WARNING)
 
 def main():
     parser = argparse.ArgumentParser()
@@ -134,7 +134,7 @@ def main():
     if args.log_level != None:
         level = logging.getLevelName(args.log_level)
         logging.basicConfig(stream=sys.stdout, level=level, format='%(levelname)s:%(name)s:%(funcName)s:%(message)s')
-        logging.getLogger('matplotlib').setLevel(logging.WARNING)
+        
 
     if args.check_boxes:
         logger.info('Checking boxes') 
