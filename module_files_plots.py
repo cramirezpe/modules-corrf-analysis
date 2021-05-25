@@ -175,8 +175,6 @@ class Plots:
             fig, ax = plt.subplots()
         plot_args = { **dict(c='C1'), **plot_args }
         
-        if bias is None:
-            bias = theory.bias(z)
         
         xi_th = theory.get_npole(n=pole, z=z, bias=bias, rsd=rsd)
         if apply_lognormal:
