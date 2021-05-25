@@ -49,10 +49,10 @@ def main():
         default=Path('/global/u2/c/cramirez/Codes/CoLoRe/CoLoRe_LyA_v3/examples/LSST/NzBlue.txt'),
     )
 
-    # parser.add_argument('--pk-filename',
-    #     type=Path,
-    #     default=Path('/global/u2/c/cramirez/Codes/CoLoRe/CoLoRe_LyA_v3/examples/simple/Pk_CAMB_test.dat'),
-    # )
+    parser.add_argument('--pk-filename',
+        type=Path,
+        default=Path('/global/u2/c/cramirez/Codes/CoLoRe/CoLoRe_LyA_v3/examples/simple/Pk_CAMB_test.dat'),
+    )
 
     parser.add_argument('--rmin',
         type=float,
@@ -127,6 +127,29 @@ def main():
         help='Arguments for theory plot (using literal eval)'
     )
 
+    parser.add_argument('--theory-method',
+        type=str,
+        default='input_pk',
+        choices=['output_CoLoRe', 'input_pk'],
+        help='Which theory method use (default: use input pk to compute it',
+    )
+
+    parser.add_argument('--pk-smooth',
+        type=float,
+        default=6,
+        help='Smooth factor to use for input_pk theory method',
+    )
+
+    parser.add_argument('--pk-apply-lognormal',
+        action='store_true',
+        help='Apply lognormal transformation after getting Xi from Pk',
+    )
+
+    parser.add_argument('--apply-lognormal-multipole',
+        action='store_true',
+        help='Apply lognormal transformation to the final correlation obtained (after computing multipole)'
+    )
+
     parser.add_argument('--log-level', default=None, choices=['CRITICAL', 'ERROR', 'WARNING', 'INFO', 'DEBUG', 'NOTSET'])
 
     args = parser.parse_args()
@@ -150,15 +173,28 @@ def main():
 def do_plotting(args):
     bias_filename = args.bias_filename if args.bias_filename != "None" else None
     nz_filename = args.nz_filename if args.nz_filename != "None" else None
-    # pk_filename = args.pk_filename if args.pk_filename != "None" else None
+    pk_filename = args.pk_filename if args.pk_filename != "None" else None
 
     logger.info('Defining theory class')
-    theory = ReadXiCoLoRe(args.path_to_theory_box, 
-        source=args.source,
-        nz_filename=nz_filename, 
-        tracer='dd',
-        bias_filename=bias_filename
-    )
+    if args.theory_method == 'input_pk':
+        logger.info('Using input pk method')
+        theory = ReadXiCoLoReFromPk(args.path_to_theory_box, 
+            source=args.source,
+            nz_filename=nz_filename, 
+            tracer='dd',
+            bias_filename=bias_filename,
+            pk_filename=pk_filename,
+            smooth_factor=args.pk_smooth,
+            apply_lognormal=args.pk_apply_lognormal
+        )
+    else:
+        logger.info('Using output files from CoLoRe')
+        theory = ReadXiCoLoRe(args.path_to_theory_box, 
+            source=args.source,
+            nz_filename=nz_filename, 
+            tracer='dd',
+            bias_filename=bias_filename
+        )
 
     logger.info('Collecting corrfunc results')
     boxes = FileFuncs.mix_sims(
@@ -192,7 +228,7 @@ def do_plotting(args):
 
     for pole, title in zip(args.multipoles, titles):
         fig, ax = plt.subplots()
-        Plots.plot_theory(pole, z=round(zeff, 1), theory=theory, ax=ax, plot_args=args.plot_theory_args, rsd=args.rsd)
+        Plots.plot_theory(pole, z=round(zeff, 1), theory=theory, ax=ax, plot_args=args.plot_theory_args, rsd=args.rsd, apply_lognormal=args.apply_lognormal_multipole)
         Plots.plot_data(pole, boxes=boxes, ax=ax, plot_args=args.plot_data_args, rsd=args.rsd)
         ax.set_title(title)
         ax.legend()
