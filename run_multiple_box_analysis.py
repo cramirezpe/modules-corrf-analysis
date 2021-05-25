@@ -3,11 +3,8 @@ from available_sims import search_corrs
 from module_files_plots import *
 import sys
 import logging
+import ast
 logger = logging.getLogger(__name__)
-
-plot_title = 'Monopole'
-plot_args_data = dict(label='data')
-plot_args_theory = dict(label='theory')
 
 def main():
     parser = argparse.ArgumentParser()
@@ -110,6 +107,25 @@ def main():
         help='zeff to use for theory (defaults to computing it from catalog, ¡Slowest part of the code!, try to run it only once)',
     )
 
+    parser.add_argument('--plot-titles',
+        type=str,
+        nargs='+',
+        default=None,
+        help='Titles for plots (one plot per multipole)'
+    )
+
+    parser.add_argument('--plot-data-args',
+        type=ast.literal_eval,
+        default=dict(label='data'),
+        help='Arguments for data plot (using literal eval)'
+    )
+
+    parser.add_argument('--plot-theory-args',
+        type=ast.literal_eval,
+        default=dict(label='theory'),
+        help='Arguments for theory plot (using literal eval)'
+    )
+
     parser.add_argument('--log-level', default=None, choices=['CRITICAL', 'ERROR', 'WARNING', 'INFO', 'DEBUG', 'NOTSET'])
 
     args = parser.parse_args()
@@ -163,11 +179,21 @@ def do_plotting(args):
     logger.info(f'zeff:\t{zeff}')
 
     logger.info('Starting plot section')
-    for pole in args.multipoles:
+
+    # Set titles for the different plots
+    if args.plot_titles is None:
+        titles = [f'Correlation npole {i}' for i in args.multipoles]
+    elif len(args.plot_titles) != len(args.multipoles):
+        logger.warning('number of titles != number of multipoles. Using default titles')
+        titles = [f'Correlation npole {i}' for i in args.multipoles]
+    else:
+        titles = args.plot_titles
+
+    for pole, title in zip(args.multipoles, titles):
         fig, ax = plt.subplots()
         Plots.plot_theory(pole, z=round(zeff, 1), theory=theory, ax=ax, plot_args=plot_args_theory, rsd=args.rsd)
         Plots.plot_data(pole, boxes=boxes, ax=ax, plot_args=plot_args_data, rsd=args.rsd)
-        ax.set_title(plot_title)
+        ax.set_title(title)
         ax.legend()
         plt.show()
 
