@@ -5,6 +5,7 @@ import sys
 import logging
 import ast
 logger = logging.getLogger(__name__)
+logging.getLogger('matplotlib').setLevel(logging.WARNING)
 
 def main():
     parser = argparse.ArgumentParser()
