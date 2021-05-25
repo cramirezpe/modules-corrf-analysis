@@ -601,6 +601,10 @@ class ReadXiCoLoReFromPk(ReadXiCoLoRe):
 
         return r, xi
 
+    @cached_property
+    def r(self):
+        return self.pk0[0]
+
     def get_theory(self, z, bias=None):
         r, xi = self.pk0
         
