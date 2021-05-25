@@ -191,8 +191,8 @@ def do_plotting(args):
 
     for pole, title in zip(args.multipoles, titles):
         fig, ax = plt.subplots()
-        Plots.plot_theory(pole, z=round(zeff, 1), theory=theory, ax=ax, plot_args=plot_args_theory, rsd=args.rsd)
-        Plots.plot_data(pole, boxes=boxes, ax=ax, plot_args=plot_args_data, rsd=args.rsd)
+        Plots.plot_theory(pole, z=round(zeff, 1), theory=theory, ax=ax, plot_args=args.plot_theory_args, rsd=args.rsd)
+        Plots.plot_data(pole, boxes=boxes, ax=ax, plot_args=args.plot_data_args, rsd=args.rsd)
         ax.set_title(title)
         ax.legend()
         plt.show()
