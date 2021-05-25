@@ -566,7 +566,7 @@ class ReadXiCoLoRe(ReadTheoryCoLoRe):
         return 5*np.array(integrals)/self.r**5
         
 class ReadXiCoLoReFromPk(ReadXiCoLoRe):
-    def __init__(self, box_path, source, tracer='dd', bias_filename=None, nz_filename=None, pk_filename=None, param_cfg_filename=None, zmin=None, zmax=None, smooth_factor=None):
+    def __init__(self, box_path, source, tracer='dd', bias_filename=None, nz_filename=None, pk_filename=None, param_cfg_filename=None, zmin=None, zmax=None, smooth_factor=None, apply_lognormal=True):
         super().__init__(box_path=box_path,
                         source=source,
                         tracer=tracer,
@@ -585,6 +585,7 @@ class ReadXiCoLoReFromPk(ReadXiCoLoRe):
             self.pk_filename = pk_filename
 
         self.smooth_factor = smooth_factor
+        self.apply_lognormal = apply_lognormal
     
     @cached_property
     def pk0(self):
@@ -598,6 +599,9 @@ class ReadXiCoLoReFromPk(ReadXiCoLoRe):
             self.smooth_factor = r_smooth + (self.L_box()/n_grid)**2/12
         
         xi = np.asarray( from_pk_to_correlation(k, pk*np.exp(-self.smooth_factor*k**2), r) )
+
+        if self.apply_lognormal:
+            xi = from_xi_g_to_xi_ln(xi)
 
         return r, xi
 
@@ -731,3 +735,7 @@ class CAMBCorrelation(ReadXiCoLoRe):
 def simple_integral(x, y):
     integrand = InterpolatedUnivariateSpline(x, y, k=1)
     return integrand.integral(x[0], x[-1])
+
+def from_xi_g_to_xi_ln(xi):
+    # return np.log(1 + xi)
+    return np.exp(xi) - 1
