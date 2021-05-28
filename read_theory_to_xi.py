@@ -632,6 +632,106 @@ class ReadXiCoLoReFromPk(ReadXiCoLoRe):
         evolved_xi = bias_factor*growth_factor_factor*xi
         return r, evolved_xi
 
+    def get_theory_pk(self, z, bias=None):
+        k, pk = self.pk0
+        
+        if self.tracer == 'dd':
+            bias_factor = self.bias(z)**2 if bias is None else bias**2
+        elif self.tracer == 'dm':
+            bias_factor = self.bias(z) if bias is None else bias
+        else:
+            bias_factor = 1
+
+
+        growth_factor_factor = self.growth_factor(1/(1+z))/self.growth_factor(1)
+        growth_factor_factor **=2
+
+        evolved_pk = bias_factor*growth_factor_factor*pk
+        return k, pk
+
+    def get_npole_pk(self, n, z, rsd=True, bias=None):
+        '''
+        Compute the npole for the correspondent z_bin
+
+        Args:
+            n (int): multipole
+            z (float): redshift value for theory.
+            rsd (bool, optional): whether to include redshift space distortions. (default: True).
+            bias (float, optional): force a value of bias. (default: compute the correspondent value of bias for the redshift given.')
+        '''
+        pk = self.get_theory_pk(z, bias=bias)[1]
+
+        if not rsd:
+            if n == 0:
+                return pk
+            else:
+                return np.zeros_like(pk)
+        else:
+            if bias is None:
+                try:
+                    beta = self.beta_from_file(z)
+                except IndexError:
+                    logger.warning('Getting growth factor from CoLoRe files failed, computing growth factor...')
+                    beta = self.beta_from_growth(z)
+            else:
+                try: 
+                    f = self.velocity_growth_factor(z, read_file=True)
+                except IndexError:
+                    logger.warning('Getting growth factor from CoLoRe files failed, computing growth factor...')
+                    f = self.velocity_growth_factor(z, read_file=False)
+                beta = f/bias
+
+            if np.isinf(beta) and (bias == 0):
+                pk = self.get_theory_pk(z, bias=1)[1] # pk used should be the matter one, bias 1
+                if n == 0:
+                    return (f**2/5)*pk
+                if n == 2:
+                    return (4*f**2/7.0)*pk
+                if n == 4:
+                    return 8*beta**2/35 * pk
+                else:
+                    raise ValueError('n not in 0 2 4')
+
+            if n == 0:
+                return (1 + 2*beta/3.0 + beta**2/5.0)*pk
+            if n == 2:
+                return (4*beta/3.0 + 4*beta**2/7.0)*pk
+            if n == 4:
+                return 8*beta**2/35 * pk
+            else:
+                raise ValueError('n not in 0 2 4')
+
+    def get_npole(self, n z, rsd=True, bias=None):
+        '''
+        Compute the npole for the correspondent z_bin
+
+        Args:
+            n (int): multipole
+            z (float): redshift value for theory.
+            rsd (bool, optional): whether to include redshift space distortions. (default: True).
+            bias (float, optional): force a value of bias. (default: compute the correspondent value of bias for the redshift given.')
+        '''
+        k, _ = self.pk0[0]
+
+        pkl = self.get_npole_pk(n=n, z=z, rsd=rsd, bias=bias)
+
+        if n == 0:
+            def jl(x):
+                return np.sin(x)/x
+        elif n == 2:
+            def jl(x): #negative added because later we will apply i^l
+                return -(3/x**3 - 1/x)*np.sin(x) + 3*np.cos(x)/x**2
+        else:
+            raise ValueError('n not in 0 2')
+
+        xil = []
+        for r in self.r:
+            fk = k**2*pkl*jl(k*r)/(2*np.pi**2)
+            integrand = InterpolatedUnivariateSpline(k, fk, k=1)
+            xil.append(integrand.integral(k[0], k[-1]))
+        
+        return xil
+
     def L_box(self):
         cosmo = astropy.cosmology.LambdaCDM(self.cosmo['h']*100,
                                    Om0=self.cosmo['omega_M'],
