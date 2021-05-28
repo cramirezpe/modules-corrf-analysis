@@ -589,28 +589,34 @@ class ReadXiCoLoReFromPk(ReadXiCoLoRe):
     
     @cached_property
     def pk0(self):
-        xi_file = next(self.box_path.glob(f'out_xi_srcs_pop{self.source-1}*'))
-        r, _, _, _ = np.loadtxt(xi_file, unpack=True)
         k, pk = np.loadtxt(self.pk_filename, unpack=True)
 
         if self.smooth_factor is None:
             r_smooth = self.param_cfg['field_par']['r_smooth']
             n_grid   = self.param_cfg['field_par']['n_grid']
             self.smooth_factor = r_smooth + (self.L_box()/n_grid)**2/12
-        
-        xi = np.asarray( from_pk_to_correlation(k, pk*np.exp(-self.smooth_factor*k**2), r) )
+    
+        return k, pk*np.exp(-self.smooth_factor*k**2)
+
+    @cached_property
+    def xi0(self):
+        k, pk = self.pk0
+
+        xi = np.asarray( from_pk_to_correlation(k, pk*np.exp(-self.smooth_factor*k**2), self.r) )
 
         if self.apply_lognormal:
             xi = from_xi_g_to_xi_ln(xi)
 
-        return r, xi
+        return self.r, xi
 
     @cached_property
     def r(self):
-        return self.pk0[0]
+        xi_file = next(self.box_path.glob(f'out_xi_srcs_pop{self.source-1}*'))
+        r, _, _, _ = np.loadtxt(xi_file, unpack=True)
+        return r
 
     def get_theory(self, z, bias=None):
-        r, xi = self.pk0
+        r, xi = self.xi0
         
         if self.tracer == 'dd':
             bias_factor = self.bias(z)**2 if bias is None else bias**2
