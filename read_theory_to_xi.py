@@ -602,7 +602,7 @@ class ReadXiCoLoReFromPk(ReadXiCoLoRe):
     def xi0(self):
         k, pk = self.pk0
 
-        xi = np.asarray( from_pk_to_correlation(k, pk*np.exp(-self.smooth_factor*k**2), self.r) )
+        xi = np.asarray( from_pk_to_correlation(k, pk, self.r) )
 
         if self.apply_lognormal:
             xi = from_xi_g_to_xi_ln(xi)
