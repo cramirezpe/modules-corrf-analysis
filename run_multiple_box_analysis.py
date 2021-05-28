@@ -117,13 +117,13 @@ def main():
 
     parser.add_argument('--plot-data-args',
         type=ast.literal_eval,
-        default=dict(label='data'),
+        default=dict(),
         help='Arguments for data plot (using literal eval)'
     )
 
     parser.add_argument('--plot-theory-args',
         type=ast.literal_eval,
-        default=dict(label='theory'),
+        default=dict(label='Linear theory + grid effects'),
         help='Arguments for theory plot (using literal eval)'
     )
 
@@ -226,10 +226,11 @@ def do_plotting(args):
     else:
         titles = args.plot_titles
 
+    data_args = { **dict(label=r'$z \in ({},{})$'.format(args.zmin, args.zmax)), **args.plot_data_args }
     for pole, title in zip(args.multipoles, titles):
         fig, ax = plt.subplots()
         Plots.plot_theory(pole, z=round(zeff, 1), theory=theory, ax=ax, plot_args=args.plot_theory_args, rsd=args.rsd, apply_lognormal=args.apply_lognormal_multipole)
-        Plots.plot_data(pole, boxes=boxes, ax=ax, plot_args=args.plot_data_args, rsd=args.rsd)
+        Plots.plot_data(pole, boxes=boxes, ax=ax, plot_args=data_args, rsd=args.rsd)
         ax.set_title(title)
         ax.legend()
         plt.show()
