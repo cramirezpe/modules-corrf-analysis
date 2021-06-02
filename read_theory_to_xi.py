@@ -701,7 +701,7 @@ class ReadXiCoLoReFromPk(ReadXiCoLoRe):
             else:
                 raise ValueError('n not in 0 2 4')
 
-    def get_npole(self, n z, rsd=True, bias=None):
+    def get_npole(self, n, z, rsd=True, bias=None):
         '''
         Compute the npole for the correspondent z_bin
 
@@ -711,7 +711,7 @@ class ReadXiCoLoReFromPk(ReadXiCoLoRe):
             rsd (bool, optional): whether to include redshift space distortions. (default: True).
             bias (float, optional): force a value of bias. (default: compute the correspondent value of bias for the redshift given.')
         '''
-        k, _ = self.pk0[0]
+        k = self.pk0[0]
 
         pkl = self.get_npole_pk(n=n, z=z, rsd=rsd, bias=bias)
 
