@@ -602,18 +602,13 @@ class ReadXiCoLoReFromPk(ReadXiCoLoRe):
     def xi0(self):
         k, pk = self.pk0
 
-        xi = np.asarray( from_pk_to_correlation(k, pk, self.r) )
+        r, xi = P2xi(k)(pk)
+        return r, xi
 
-        if self.apply_lognormal:
-            xi = from_xi_g_to_xi_ln(xi)
-
-        return self.r, xi
 
     @cached_property
     def r(self):
-        xi_file = next(self.box_path.glob(f'out_xi_srcs_pop{self.source-1}*'))
-        r, _, _, _ = np.loadtxt(xi_file, unpack=True)
-        return r
+        return self.xi0[0]
 
     def get_theory(self, z, bias=None):
         r, xi = self.xi0
