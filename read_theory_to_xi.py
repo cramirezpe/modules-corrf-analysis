@@ -9,6 +9,7 @@ import numpy as np
 from astropy import cosmology
 from camb import initialpower, model
 from scipy.interpolate import InterpolatedUnivariateSpline, interp1d
+from mcfit import xi2P, P2xi
 
 logger = logging.getLogger(__name__)
 
@@ -610,7 +611,7 @@ class ReadXiCoLoReFromPk(ReadXiCoLoRe):
     def r(self):
         return self.xi0[0]
 
-    def get_theory(self, z, bias=None):
+    def get_theory(self, z, bias=None, lognormal=False):
         r, xi = self.xi0
         
         if self.tracer == 'dd':
@@ -624,10 +625,14 @@ class ReadXiCoLoReFromPk(ReadXiCoLoRe):
         growth_factor_factor = self.growth_factor(1/(1+z))/self.growth_factor(1)
         growth_factor_factor **=2
 
-        evolved_xi = bias_factor*growth_factor_factor*xi
-        return r, evolved_xi
+        evolved_xi = growth_factor_factor*xi
 
-    def get_theory_pk(self, z, bias=None):
+        if lognormal:
+            evolved_xi = from_xi_g_to_xi_ln(evolved_xi)
+
+        return r, evolved_xi*bias_factor
+
+    def get_theory_pk(self, z, bias=None, lognormal=False):
         k, pk = self.pk0
         
         if self.tracer == 'dd':
@@ -641,8 +646,14 @@ class ReadXiCoLoReFromPk(ReadXiCoLoRe):
         growth_factor_factor = self.growth_factor(1/(1+z))/self.growth_factor(1)
         growth_factor_factor **=2
 
-        evolved_pk = bias_factor*growth_factor_factor*pk
-        return k, pk
+        evolved_pk = growth_factor_factor*pk
+
+        if lognormal:
+            _r, _xi = P2xi(k)(evolved_pk)
+            _xi = from_xi_g_to_xi_ln(_xi)
+            k, evolved_pk = xi2P(_r)(_xi)
+
+        return k, evolved_pk*bias_factor
 
     def get_npole_pk(self, n, z, rsd=True, bias=None):
         '''
@@ -655,14 +666,23 @@ class ReadXiCoLoReFromPk(ReadXiCoLoRe):
             bias (float, optional): force a value of bias. (default: compute the correspondent value of bias for the redshift given.')
         '''
         pk = self.get_theory_pk(z, bias=bias)[1]
+        if self.apply_lognormal:
+            logger.debug('Compute lognormalized input pk')
+            pk_l = self.get_theory_pk(z, bias=bias, lognormal=True)[1]
+        else:
+            pk_l = pk
 
         if not rsd:
+            logger.debug('No rsd')
             if n == 0:
-                return pk
+                logger.debug('monopole selected, only output pk')
+                return pk_l
             else:
                 return np.zeros_like(pk)
         else:
+            logger.debug('rsd')
             if bias is None:
+                logger.debug('Bias is none, computing it to get beta')
                 try:
                     beta = self.beta_from_file(z)
                 except IndexError:
@@ -675,8 +695,11 @@ class ReadXiCoLoReFromPk(ReadXiCoLoRe):
                     logger.warning('Getting growth factor from CoLoRe files failed, computing growth factor...')
                     f = self.velocity_growth_factor(z, read_file=False)
                 beta = f/bias
+            
+            logger.debug(f'beta value: {beta}')
 
             if np.isinf(beta) and (bias == 0):
+                logger.debug('Bias is zero. Computing theory with only clustering from RSD')
                 pk = self.get_theory_pk(z, bias=1)[1] # pk used should be the matter one, bias 1
                 if n == 0:
                     return (f**2/5)*pk
@@ -688,10 +711,13 @@ class ReadXiCoLoReFromPk(ReadXiCoLoRe):
                     raise ValueError('n not in 0 2 4')
 
             if n == 0:
-                return (1 + 2*beta/3.0 + beta**2/5.0)*pk
-            if n == 2:
+                logger.debug('returning monopole')
+                return pk_l + (2*beta/3.0 + beta**2/5.0)*pk
+            if n == 2: 
+                logger.debug('returning quadrupole')
                 return (4*beta/3.0 + 4*beta**2/7.0)*pk
             if n == 4:
+                logger.debug('returning n=4')
                 return 8*beta**2/35 * pk
             else:
                 raise ValueError('n not in 0 2 4')
@@ -710,20 +736,21 @@ class ReadXiCoLoReFromPk(ReadXiCoLoRe):
 
         pkl = self.get_npole_pk(n=n, z=z, rsd=rsd, bias=bias)
 
-        if n == 0:
-            def jl(x):
-                return np.sin(x)/x
-        elif n == 2:
-            def jl(x): #negative added because later we will apply i^l
-                return -(3/x**3 - 1/x)*np.sin(x) + 3*np.cos(x)/x**2
-        else:
-            raise ValueError('n not in 0 2')
+        _r, xil = P2xi(k, l=n)(pkl)
+        # if n == 0:
+        #     def jl(x):
+        #         return np.sin(x)/x
+        # elif n == 2:
+        #     def jl(x): #negative added because later we will apply i^l
+        #         return -(3/x**3 - 1/x)*np.sin(x) + 3*np.cos(x)/x**2
+        # else:
+        #     raise ValueError('n not in 0 2')
 
-        xil = []
-        for r in self.r:
-            fk = k**2*pkl*jl(k*r)/(2*np.pi**2)
-            integrand = InterpolatedUnivariateSpline(k, fk, k=1)
-            xil.append(integrand.integral(k[0], k[-1]))
+        # xil = []
+        # for r in self.r:
+        #     fk = k**2*pkl*jl(k*r)/(2*np.pi**2)
+        #     integrand = InterpolatedUnivariateSpline(k, fk, k=1)
+        #     xil.append(integrand.integral(k[0], k[-1]))
         
         return xil
 
@@ -839,4 +866,5 @@ def simple_integral(x, y):
 
 def from_xi_g_to_xi_ln(xi):
     # return np.log(1 + xi)
+    logger.debug('lognormalizing')
     return np.exp(xi) - 1
