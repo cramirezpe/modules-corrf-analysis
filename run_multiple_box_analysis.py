@@ -2,6 +2,7 @@ import argparse
 from available_sims import search_corrs
 import logging
 logging.getLogger('matplotlib').setLevel(logging.WARNING)
+logging.getlogger('mcfit').setLevel(logging.CRITICAL)
 from module_files_plots import *
 import sys
 import logging
@@ -123,7 +124,7 @@ def main():
 
     parser.add_argument('--plot-theory-args',
         type=ast.literal_eval,
-        default=dict(label='Linear theory + grid effects'),
+        default=dict(label='Lognormal theory + smoothing'),
         help='Arguments for theory plot (using literal eval)'
     )
 
@@ -140,9 +141,9 @@ def main():
         help='Smooth factor to use for input_pk theory method',
     )
 
-    parser.add_argument('--pk-apply-lognormal',
+    parser.add_argument('--pk-skip-lognormal',
         action='store_true',
-        help='Apply lognormal transformation after getting Xi from Pk',
+        help='Do not apply lognormal transformation after getting Xi from Pk',
     )
 
     parser.add_argument('--apply-lognormal-multipole',
@@ -185,7 +186,7 @@ def do_plotting(args):
             bias_filename=bias_filename,
             pk_filename=pk_filename,
             smooth_factor=args.pk_smooth,
-            apply_lognormal=args.pk_apply_lognormal
+            apply_lognormal=not args.pk_skip_lognormal
         )
     else:
         logger.info('Using output files from CoLoRe')
@@ -207,6 +208,7 @@ def do_plotting(args):
         boxes=args.boxes,
         pixels=args.pixels
     )
+    logger.info(f'Number of pixels available: {len(boxes)}')
 
     logger.info('Setting zeff')
     if args.zeff is None:

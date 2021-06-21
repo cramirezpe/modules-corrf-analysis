@@ -175,11 +175,15 @@ class Plots:
             fig, ax = plt.subplots()
         plot_args = { **dict(c='C1'), **plot_args }
         
-        
-        xi_th = theory.get_npole(n=pole, z=z, bias=bias, rsd=rsd)
+        # if bias is None:
+        #     bias = theory.bias(z)
+
+        xi_th = np.asarray(theory.get_npole(n=pole, z=z, bias=bias, rsd=rsd))
         if apply_lognormal:
-            xi_th = from_xi_g_to_xi_ln(xi_th)
-        ax.plot(theory.r, theory.r**2*xi_th, **plot_args)
+            xi_th = np.asarray(from_xi_g_to_xi_ln(xi_th))
+
+        msk = theory.r < 301
+        ax.plot(theory.r[msk], (theory.r[msk])**2*xi_th[msk], **plot_args)
         ax.set_xlabel(r'$r [Mpc/h]$')
         ax.set_ylabel(r'$r^2 \xi(r)$')
 
