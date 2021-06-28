@@ -59,7 +59,7 @@ class CFComputations:
     def mumean(self):
         return (self.mubins[1:] + self.mubins[:-1])/2
         
-    @property
+    @cached_property
     def cf(self):
         self.cf = convert_3d_counts_to_cf(self.N_data, self.N_data, self.N_rand, self.N_rand, 
                                           self.DD, self.DR, self.DR, self.RR)
