@@ -17,24 +17,49 @@ class CFComputations:
         self.N_rand = 1/N_data_rand_ratio
         self.label = label
         
-        try:
-            self.DD = np.loadtxt(results_path / 'DD.dat', dtype=self.dtypes)
-            self.DR = np.loadtxt(results_path / 'DR.dat', dtype=self.dtypes)
-            self.RR = np.loadtxt(results_path / 'RR.dat', dtype=self.dtypes)
-        except OSError:
-            self.DD = np.loadtxt(results_path / '0_DD.dat', dtype=self.dtypes)
-            self.DR = np.loadtxt(results_path / '0_DR.dat', dtype=self.dtypes)
-            self.RR = np.loadtxt(results_path / '0_RR.dat', dtype=self.dtypes)
-        
-        self.savg = np.unique(( self.DD['smin'] + self.DD['smax'] ))/2     
-        
-        self.mubins = np.concatenate([[0], np.unique(self.DD['mu_max'])])
-        self.mumean = (self.mubins[1:] + self.mubins[:-1])/2
-        
     def __str__(self):
         return self.label
+
+    @property
+    def DD(self):
+        try:
+            return np.loadtxt(self.results_path / 'DD.dat', dtype=self.dtypes)
+        except OSError:
+            return np.loadtxt(self.results_path / '0_DD.dat', dtype=self.dtypes)
+
+    @property
+    def DR(self):
+        try:
+            return np.loadtxt(self.results_path / 'DR.dat', dtype=self.dtypes)
+        except OSError:
+            return np.loadtxt(self.results_path / '0_DR.dat', dtype=self.dtypes)
+
+    @property
+    def RR(self):
+        try:
+            return np.loadtxt(self.results_path / 'RR.dat', dtype=self.dtypes)
+        except OSError:
+            return np.loadtxt(self.results_path / '0_RR.dat', dtype=self.dtypes)
+
+    @property
+    def savg(self):
+        try:
+            return np.loadtxt(self.results_path / 'savg.dat')
+        except OSError:
+            return np.unique(( self.DD['smin'] + self.DD['smax'] ))/2  
+
+    @property
+    def mubins(self):
+        try:
+            return np.loadtxt(self.results_path / 'mubins.dat')
+        except OSError:
+            return np.concatenate([[0], np.unique(self.DD['mu_max'])])
+
+    @property
+    def mumean(self):
+        return (self.mubins[1:] + self.mubins[:-1])/2
         
-    @cached_property
+    @property
     def cf(self):
         self.cf = convert_3d_counts_to_cf(self.N_data, self.N_data, self.N_rand, self.N_rand, 
                                           self.DD, self.DR, self.DR, self.RR)
@@ -42,12 +67,17 @@ class CFComputations:
         
     @cached_property
     def monopole(self):
-        savg = ( self.DD['smin'] + self.DD['smax'] )/2
-        cf_monopole = []
-        for s in np.unique(savg):
-            cf_monopole.append( self.cf[savg == s].sum() )
-        
-        self.cf_monopole = cf_monopole
+        try:
+            self.cf_monopole = np.loadtxt(self.results_path / 'monopole.dat')
+        except OSError:
+            savg = ( self.DD['smin'] + self.DD['smax'] )/2
+            cf_monopole = []
+            for s in np.unique(savg):
+                cf_monopole.append( self.cf[savg == s].sum() )
+            
+            self.cf_monopole = cf_monopole
+            np.savetxt(self.results_path / 'monopole.dat', self.cf_monopole)
+
         return self.cf_monopole
     
     @cached_property
@@ -58,4 +88,11 @@ class CFComputations:
         return cf_array
 
     def compute_npole(self, n):
-        return tpcf_multipole(self.halotools_like_cf, self.mubins, order=n)
+        try:
+            npole = np.loadtxt(self.results_path / f'npole_{n}.dat')
+        except OSError:
+            npole = tpcf_multipole(self.halotools_like_cf, self.mubins, order=n)
+            np.savetxt(self.results_path / f'npole_{n}.dat', npole)
+        
+        return npole
+
