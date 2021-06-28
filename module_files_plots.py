@@ -87,18 +87,10 @@ class fit_bias:
             err_[pole] = self.xis[pole].std(axis=0, ddof=1)[self.mask]/len(self.boxes)
         return err_
 
-    @cached_property
-    def f(self):
-        try:
-            return self.theory.velocity_growth_factor(z=self.z, read_file=True)
-        except IndexError:
-            return self.theory.velocity_growth_factor(z=self.z, read_file=False)
-
     def model(self, bias , pole):
-        beta = self.f/bias
-        xi = self.theory.get_npole(n=pole, z=self.z, beta=beta)
+        xi = self.theory.get_npole(n=pole, z=self.z, bias=bias)
         try:
-            model_xi = interp1d(self.theory.pk0[0], xi)
+            model_xi = interp1d(self.theory.xi0[0], xi)
         except AttributeError:
             model_xi = interp1d(self.theory.r, xi)
         return model_xi(self.r)
