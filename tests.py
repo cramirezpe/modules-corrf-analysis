@@ -1,3 +1,9 @@
+"""
+    Tests for read_theory_to_xi. Run it using:
+        coverage run --source . -m unittest tests.py
+        python -m coverage html --omit="*/tests*","*__init__.py","*hidden_*","setup.py"
+"""
+
 import unittest
 from pathlib import Path
 from read_theory_to_xi import ReadXiCoLoReFromPk
@@ -31,6 +37,7 @@ class TestCommon(unittest.TestCase):
 
     def test_volume_between_zs(self):
         self.assertAlmostEqual(self.theory.get_volume_between_zs(0.6, 0.1).value, 44683901350.33176)
+        self.assertAlmostEqual(self.theory.get_volume_between_zs(0.3).value, 7137310306.571973)
     
     def test_get_nz_histogram_from_Nz_file(self):
         hist = self.theory.get_nz_histogram_from_Nz_file(np.linspace(0.6,0.8,10))
@@ -48,14 +55,16 @@ class TestCommon(unittest.TestCase):
         np.testing.assert_almost_equal(hist, values)
 
     def test_get_zeff(self):
-        zeff = self.theory.get_zeff(z=[0.5, 0.6], method='Nz_file')
-        self.assertAlmostEqual(zeff, 0.5492052980639449)
+        zeff = self.theory.get_zeff(zmin=0.5, zmax=0.6, method='Nz_file')
+        self.assertAlmostEqual(zeff, 0.550096831361585)
 
-        zeff = self.theory.get_zeff(z=[0.5, 0.6], method='CoLoRe', rsd=False)
-        self.assertAlmostEqual(zeff, 0.5569944128646492)
+    def test_get_zeff_2(self):
+        zeff = self.theory.get_zeff(zmin=0.5, zmax=0.6, method='CoLoRe', rsd=False)
+        self.assertAlmostEqual(zeff,  0.5533117963181481)
 
-        zeff = self.theory.get_zeff(z=[0.5, 0.6], method='CoLoRe', rsd=True)
-        self.assertAlmostEqual(zeff, 0.5568587370865825)
+    def test_get_zeff_3(self):
+        zeff = self.theory.get_zeff(zmin=0.5, zmax=0.6, method='CoLoRe', rsd=True)
+        self.assertAlmostEqual(zeff, 0.5533579649219648)
 
     def test_z_bins_from_files(self):
         values = np.asarray([0. , 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1. , 1.1, 1.2, 1.3])
@@ -75,6 +84,10 @@ class TestCommon(unittest.TestCase):
 
     def test_growth_factor(self):
         self.assertAlmostEqual(self.theory.growth_factor(0.3), 0.2966618242859617)
+
+    def test_growth_factor_below_alim(self):
+        alim = 0.01 * self.theory.get_a_eq()
+        self.assertAlmostEqual(self.theory.growth_factor(0.8*alim), 0.8*alim)
 
 class TestReadXiCoLoReFromPk(unittest.TestCase):
     def setUp(self):
@@ -125,6 +138,9 @@ class TestReadXiCoLoReFromPk(unittest.TestCase):
         
         std = np.std(self.theory.pk0)
         self.assertAlmostEqual(std, 5973.948179882572)
+
+    def test_get_r(self):
+        _ = self.theory.r
 
     def test_read_xi(self):
         mean = np.mean(self.theory.xi0)
@@ -235,3 +251,56 @@ class TestReadXiCoLoReFromPk(unittest.TestCase):
             bias_filename=self.bias_filename,
             smooth_factor=2,
             apply_lognormal=True)
+
+
+class TestLyaBox(unittest.TestCase):
+    def setUp(self):
+        self.sim_path = Path("/global/project/projectdirs/desi/users/cramirez/lya_mock_2LPT_runs/CoLoRe/CoLoRe_lognormal/CoLoRe_seed0_4096")
+
+        self.theory = ReadXiCoLoReFromPk(self.sim_path,
+            source=1,
+            tracer='dd',
+            apply_lognormal=True)
+
+        self.master_file = Path('/global/project/projectdirs/desi/users/cramirez/lya_mock_2LPT_11_runs/LyaCoLoRe/LyaCoLoRe_lognormal/LyaCoLoRe_seed0_4096/master.fits')
+    
+    def tearDown(self):
+        pass
+
+    def test_get_nz_from_master(self):
+        value = self.theory.get_nz_histogram_from_master_file(self.master_file, bins=np.linspace(2.2, 2.4, 8), rsd=True)
+        target = np.array([5.49711132, 5.34705626, 5.17662751, 5.01765572, 4.85396635,
+       4.65546546, 4.45211739])
+        np.testing.assert_almost_equal(value, target)
+
+        value = self.theory.get_nz_histogram_from_master_file(self.master_file, bins=np.linspace(2.2, 2.4, 8), rsd=False)
+        target = np.array([5.48844434, 5.34888828, 5.18037364, 5.01554038, 4.84591095,
+       4.66256701, 4.4582754 ])
+        np.testing.assert_almost_equal(value, target)
+
+    def test_get_zeff(self):
+        value = self.theory.get_zeff(zmin=2.1, zmax=2.4, method='master_file', master_file=self.master_file)
+        target = 2.234216481167806
+        np.testing.assert_almost_equal(value, target)
+
+    def test_velocity_growth_factor(self):
+        value = self.theory.velocity_growth_factor(2.3)
+        self.assertEqual(value, 0.9680556767606249)
+
+    def test_beta_from_file(self):
+        value = self.theory.beta_from_file(2.5)
+        self.assertEqual(value, 0.23565962090703166)
+
+    def test_combine_z_npoles_pk(self):
+        pk = self.theory.combine_z_npoles(0, [2.3, 2.4, 2.8], rsd=False, mode='pk', method='master_file', master_file=self.master_file)
+        mean = np.mean(pk)
+        std = np.std(pk)
+        np.testing.assert_almost_equal(mean, 15170.067024363809)
+        np.testing.assert_almost_equal(std, 19804.55115202347)
+
+    def test_combine_z_npoles_xi(self):
+        xi = self.theory.combine_z_npoles(0, [2.3, 2.4, 2.8], rsd=False, mode='xi', method='master_file', master_file=self.master_file)
+        mean = np.mean(xi)
+        std = np.std(xi)
+        np.testing.assert_almost_equal(mean, 10.439991963256283)
+        np.testing.assert_almost_equal(std, 9.691521839160348)
