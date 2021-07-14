@@ -14,11 +14,6 @@ from mcfit import xi2P, P2xi
 
 logger = logging.getLogger(__name__)
 
-def get_theory(z, source, box_path):
-    '''Get theory from pk_srcs files into numpy arrays'''
-    ks, pdd, pdm, pmm =  np.loadtxt(box_path / f'out_pk_srcs_pop{source-1}_z{z:.3f}.txt', unpack=True)
-    return ks, pdd, pdm, pmm
-
 class ReadTheoryCoLoRe:
     _default_h = 0.7
     _default_Om0 = 0.3
@@ -130,32 +125,6 @@ class ReadTheoryCoLoRe:
 
         return cosmo.comoving_volume(max(z1,z2)) - cosmo.comoving_volume(min(z1,z2))
 
-    def combine_z(self, z=None):
-        '''
-        Args: 
-            z (array, optional): Array of redshift bins to combine. Default to all the redshift bins available for the box.
-        '''
-        if z is None:
-            z = list( map(lambda x: float(x.name[18:23]), self.box_path.glob('out_pk*')) )
-
-        z = np.sort(z)
-
-        total_volume = self.get_volume_between_zs(z[-1])
-        bin_width = z[1] - z[0]
-
-        pk = 0  
-        for zi in z:
-            zmin = zi
-            zmax = zi + bin_width
-            
-            volume = self.get_volume_between_zs(zmax, zmin)
-
-            ks, pki = self.get_theory(zi)
-            pk += pki*volume
-        
-        pk /= total_volume
-        return pk
-
     def get_nz_histogram_from_Nz_file(self, bins):
         z, nz = np.loadtxt(self.nz_filename, unpack=True)
         nz_interpolation = interp1d(z, nz)
@@ -203,11 +172,13 @@ class ReadTheoryCoLoRe:
 
         return Nz
 
-    def get_zeff(self, z=None, method='CoLoRe', master_file=None, rsd=True):
+    def get_zeff(self, zmin, zmax, nbins=100, method='CoLoRe', master_file=None, rsd=True):
         '''
-        Get effective redsfhit for the correlation by weighting the density of pairs over all redshift
+        Get effective redsfhit for the correlation by weighting the density of pairs over the redshift range given.
         Args:
-            z (array, optional): Array of redshift bins to combine. Default to all the redshift bins available for the box.
+            zmin (double): Min redshift of the range
+            zmax (double): Max redshift of the range
+            nbins (double, optional): Number of bins in which to divide the range before integration.
             method (str, optional): Method to extract the Nz histogram. Options:
                 CoLoRe: Reads the CoLoRe output files. (DEFAULT)
                 master_file: Reads the LyaCoLoRe master file provided in master_file
@@ -216,82 +187,84 @@ class ReadTheoryCoLoRe:
         '''
         logger.debug('Defining bins')
 
-        if z is None:
-            z = self.z_bins_from_files()
-        if len(z) == 1:
-            return z
-
-        bin_width = z[1] - z[0]
-        bins = np.concatenate((z,[z[-1]+bin_width]))
+        bins = np.linspace(zmin, zmax, nbins)
+        bin_width = bins[1] - bins[0]
+        bin_centers = (bins[1:] + bins[:-1]) / 2
 
         logger.debug('Generating Nz')
         if method == 'CoLoRe':
             Nz = self.get_nz_histogram_from_CoLoRe_box(bins, rsd)
         elif method == 'master_file':
-            if master_file is None:
+            if master_file is None: # pragma: no cover
                 raise ValueError('master_file needs to be defined to use master_file method')
             else:
                 Nz = self.get_nz_histogram_from_master_file(master_file, bins, rsd)
         elif method == 'Nz_file':
             Nz = self.get_nz_histogram_from_Nz_file(bins)
-        else: 
+        else: # pragma: no cover
             raise ValueError('Method for combining Nz should be in ("CoLoRe", "master_file", "Nz_file")')
 
         norm_Nz2 = 1/(bin_width*(Nz**2).sum())
         Nz2 = norm_Nz2 * Nz**2
 
-        zs = np.array([zi*Nzi for zi, Nzi in zip(z, Nz2)])
+        zs = np.array([zi*Nzi for zi, Nzi in zip(bin_centers, Nz2)])
 
         return zs.sum(axis=0) * bin_width
 
-    def combine_z_using_Nz(self, rsd, n_pole, z=None, bias=None, method='CoLoRe', master_file=None):
+    def combine_z_npoles(self, n, zbins, rsd, mode='pk', bias=None, method='CoLoRe', master_file=None):
         '''
-        Combine multiple redshift bins using the distribution of objects on redshift as weight. Nz computed from catalog.
+        Get a prediction combining multipoles in different redshift bins.
         Args:
-            master_file (str or Path): Path to the master catalog of objects
-            rsd (bool): Whether to read Z data with/without rsd
-            n_pole (int): npole to compute
-            z (array, optional): Array of redshift bins to combine. Default to all the redshift bins available for the box.
+            n (int): Multipole to compute.
+            zbins (array of doubles): Redshift bins to use.
+            rsd (bool): Whether to use RSD or not.
+            bias (float, optional): Force a value for bias for each redshfit bin (Default: get it from bias filename).
+            mode (str, optional): Whether to combine correlation function (xi) or power spectra (pk)
             method (str, optional): Method to extract the Nz histogram. Options:
                 CoLoRe: Reads the CoLoRe output files. (DEFAULT)
                 master_file: Reads the LyaCoLoRe master file provided in master_file
                 Nz_file: Reads the Nz file provided in param.cfg
+            master_file(Path or str): Path to the LyaCoLoRe master file if master_file mode is used.
         '''
         logger.info(f'Combining redshifts.')
-        if z is None:
-            z = self.z_bins_from_files()
-        if len(z) == 1:
-            return self.get_npole(n=n_pole, z=z, rsd=rsd)
 
         if bias is None:
-            bias = [None for i in z]
+            bias = [None for i in range(len(zbins)-1)]
 
-        bin_width = z[1] - z[0]
-        bins = np.concatenate((z,[z[-1]+bin_width]))
+        z_effs = [self.get_zeff(zmin, zmax, method=method, master_file=master_file, rsd=rsd) for zmin,zmax in zip(zbins[:-1], zbins[1:])]
+        z_widths = np.diff(zbins)
 
-        logger.debug('Generating Nz')
-        if method == 'CoLoRe':
-            Nz = self.get_nz_histogram_from_CoLoRe_box(bins, rsd)
+        logger.debug('Generating Nz distributions')
+        if method == 'CoLoRe': # pragma: no cover
+            Nz = self.get_nz_histogram_from_CoLoRe_box(zbins, rsd)
         elif method == 'master_file':
-            if master_file is None:
+            if master_file is None: # pragma: no cover
                 raise ValueError('master_file needs to be defined to use master_file method')
             else:
-                Nz = self.get_nz_histogram_from_master_file(master_file, bins, rsd)
-        elif method == 'Nz_file':
-            Nz = self.get_nz_histogram_from_Nz_file(bins)
-        else: 
+                Nz = self.get_nz_histogram_from_master_file(master_file, zbins, rsd)
+        elif method == 'Nz_file': # pragma: no cover
+            Nz = self.get_nz_histogram_from_Nz_file(zbins)
+        else:  # pragma: no cover
             raise ValueError('Method for combining Nz should be in ("CoLoRe", "master_file", "Nz_file")')
 
-        norm_Nz2 = 1/(bin_width*(Nz**2).sum())
+        norm_Nz2 = 1/(z_widths*(Nz**2).sum())
         Nz2 = norm_Nz2 * Nz**2
 
-        logger.debug('Retreiving npoles for each of the redshift bins')
-        pks = np.array([self.get_npole(n=n_pole, z=zi, rsd=rsd, bias=biasi)*Nzi for zi,Nzi,biasi in zip(z, Nz2, bias)])
+        logger.debug('Getting npoles for each of the redshift bins')
+        if mode == 'pk':
+            pks = np.array([self.get_npole_pk(n=n, z=zi, rsd=rsd, bias=biasi)*Nzi*z_width for zi,Nzi,biasi,z_width in zip(z_effs, Nz2, bias,z_widths)])
         
+            pk = pks.sum(axis=0)
 
-        pk = pks.sum(axis=0) * bin_width
+            return pk
+        elif mode == 'xi':
+            xis = np.array([self.get_npole(n=n, z=zi, rsd=rsd, bias=biasi)*Nzi*z_width for zi,Nzi,biasi,z_width in zip(z_effs, Nz2, bias,z_widths)])
+        
+            xi = xis.sum(axis=0)
 
-        return pk
+            return xi
+        else: # pragma: no cover
+            raise ValueError('Mode not in ("xi", "pk")')
 
     def z_bins_from_files(self):
         return np.sort(np.array( [float(x.name[18:23]) for x in self.box_path.glob(f'out_pk_srcs_pop{self.source-1}*')] ))
@@ -324,7 +297,7 @@ class ReadTheoryCoLoRe:
             if self.cosmo['normalDE'] == 1:
                 coeff = 0 
                 apow = a**3
-            else:
+            else: # pragma: no cover
                 coeff = 1 + self.cosmo['w']
                 apow = a**(-3*self.cosmo['w'])
 
@@ -348,7 +321,7 @@ class ReadTheoryCoLoRe:
 
         return interp1d(bias_z, bias_bz, fill_value='extrapolate')
 
-    def get_a_eq(self):
+    def get_a_eq(self): # pragma: no cover
         ''' 
         Computes and returns a_eq as computed in CoLoRe code:
         '''
@@ -382,7 +355,7 @@ class ReadTheoryCoLoRe:
             relerrt = 1e-4
 
         # Definning dum as in CoLoRe
-        def dum(a):
+        def dum(a): # pragma: no cover
             if self.cosmo['normalDE']:
                 dum = np.sqrt(a/(self.cosmo['omega_M']+self.cosmo['omega_L']*a**3+self.cosmo['omega_K']*a))
             elif self.cosmo['constantw']:
@@ -399,7 +372,7 @@ class ReadTheoryCoLoRe:
         return (int0 + integral)*2.5*self.cosmo['omega_M']/(a*dum(a))
 
     @cached_property
-    def dlnDdlna(self):
+    def dlnDdlna(self): # pragma: no cover
         '''
         Read dlogDloga from file and creates an interpolation function 
         '''
@@ -435,7 +408,7 @@ class ReadXiCoLoReFromPk(ReadTheoryCoLoRe):
         if pk_filename is None:
             try:
                 self.pk_filename = self.param_cfg['global']['pk_filename']
-            except Exception:
+            except Exception: # pragma: no cover
                 logger.warning('Failed reading pk filename from param.cfg')
         else:
             self.pk_filename = pk_filename
@@ -467,7 +440,7 @@ class ReadXiCoLoReFromPk(ReadTheoryCoLoRe):
     def r(self):
         return self.xi0[0]
 
-    def get_theory(self, z, bias=None, lognormal=False):
+    def get_theory(self, z, bias=None, lognormal=False): # pragma: no cover
         r, xi = self.xi0
         
         if self.tracer == 'dd':
@@ -554,7 +527,7 @@ class ReadXiCoLoReFromPk(ReadTheoryCoLoRe):
             
             logger.debug(f'beta value: {beta}')
 
-            if np.isinf(beta) and (bias == 0):
+            if np.isinf(beta) and (bias == 0): # pragma: no cover
                 logger.debug('Bias is zero. Computing theory with only clustering from RSD')
                 pk = self.get_theory_pk(z, bias=1)[1] # pk used should be the matter one, bias 1
                 if n == 0:
@@ -575,7 +548,7 @@ class ReadXiCoLoReFromPk(ReadTheoryCoLoRe):
             if n == 4:
                 logger.debug('returning n=4')
                 return 8*beta**2/35 * pk
-            else:
+            else: # pragma: no cover
                 raise ValueError('n not in 0 2 4')
 
     def get_npole(self, n, z, rsd=True, bias=None):
