@@ -96,3 +96,30 @@ class CFComputations:
         
         return npole
 
+def main():
+    import argparse
+    import os
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--search-path', 
+        type=Path,
+        help='Path to recursively search for boxes'
+    )
+
+    parser.add_argument('--multipoles',
+        nargs='+',
+        type=int,
+        help='multipoles to process'
+    )
+
+    args = parser.parse_args()
+    for root, dirs, files in os.walk(args.search_path.resolve()):
+        if ('DD.dat' in files) or ('0_DD.dat' in files):
+            print(root, 'has a box')
+            cfccomp = CFComputations(Path(root), 1)
+            for pole in args.multipoles:
+                print('computing pole', pole)
+                cfccomp.compute_npole(pole)
+
+if __name__ == '__main__':
+    main()
