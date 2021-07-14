@@ -585,21 +585,22 @@ class ReadXiCoLoReFromPk(ReadXiCoLoRe):
         else:
             self.pk_filename = pk_filename
 
-        self.smooth_factor = smooth_factor
-        self.apply_lognormal = apply_lognormal
-    
-    @cached_property
-    def pk0(self):
-        k, pk = np.loadtxt(self.pk_filename, unpack=True)
-
-        if self.smooth_factor is None:
+        if smooth_factor is None:
             r_smooth = self.param_cfg['field_par']['r_smooth']
             n_grid   = self.param_cfg['field_par']['n_grid']
-            self.smooth_factor = r_smooth + (self.L_box()/n_grid)**2/12
+            self.smooth_factor = r_smooth**2 + 0.9*(self.L_box()/n_grid)**2/12
+        else:
+            self.smooth_factor = smooth_factor
+
+        self.apply_lognormal = apply_lognormal
+    
+    @property
+    def pk0(self):
+        k, pk = np.loadtxt(self.pk_filename, unpack=True)
     
         return k, pk*np.exp(-self.smooth_factor*k**2)
 
-    @cached_property
+    @property
     def xi0(self):
         k, pk = self.pk0
 
