@@ -646,14 +646,14 @@ class ReadXiCoLoReFromPk(ReadXiCoLoRe):
         growth_factor_factor = self.growth_factor(1/(1+z))/self.growth_factor(1)
         growth_factor_factor **=2
 
-        evolved_pk = growth_factor_factor*pk
+        evolved_pk = growth_factor_factor*pk*bias_factor
 
         if lognormal:
             _r, _xi = P2xi(k)(evolved_pk)
             _xi = from_xi_g_to_xi_ln(_xi)
             k, evolved_pk = xi2P(_r)(_xi)
 
-        return k, evolved_pk*bias_factor
+        return k, evolved_pk
 
     def get_npole_pk(self, n, z, rsd=True, bias=None):
         '''
