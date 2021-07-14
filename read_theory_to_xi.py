@@ -58,19 +58,19 @@ class ReadTheoryCoLoRe:
         else:
             self.nz_filename = nz_filename
 
-        if zmin is None:
+        if zmin is None: # pragma: no cover
             if self.param_cfg is None:
                 self.zmin = 0
             else:
                 self.zmin = self.param_cfg['global']['z_min']
-        else:
+        else: # pragma: no cover
             self.zmin = zmin
-        if zmax is None:
+        if zmax is None: # pragma: no cover
             if self.param_cfg is None:
                 self.zmax = 1000
             else:
                 self.zmax = self.param_cfg['global']['z_max']
-        else:
+        else: # pragma: no cover
             self.zmax = zmax
             
     @cached_property
