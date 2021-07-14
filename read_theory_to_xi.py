@@ -731,6 +731,9 @@ class ReadXiCoLoReFromPk(ReadXiCoLoRe):
             z (float): redshift value for theory.
             rsd (bool, optional): whether to include redshift space distortions. (default: True).
             bias (float, optional): force a value of bias. (default: compute the correspondent value of bias for the redshift given.')
+
+        Returns:
+            1-D array. Correlation for the given multipole
         '''
         k = self.pk0[0]
 
