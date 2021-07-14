@@ -172,7 +172,7 @@ class ReadTheoryCoLoRe:
 
         return Nz
 
-    def get_zeff(self, zmin, zmax, nbins=100, method='CoLoRe', master_file=None, rsd=True):
+    def get_zeff(self, zmin, zmax, nbins=100, method='Nz_file', master_file=None, rsd=True):
         '''
         Get effective redsfhit for the correlation by weighting the density of pairs over the redshift range given.
         Args:
@@ -180,9 +180,9 @@ class ReadTheoryCoLoRe:
             zmax (double): Max redshift of the range
             nbins (double, optional): Number of bins in which to divide the range before integration.
             method (str, optional): Method to extract the Nz histogram. Options:
-                CoLoRe: Reads the CoLoRe output files. (DEFAULT)
+                CoLoRe: Reads the CoLoRe output files.
                 master_file: Reads the LyaCoLoRe master file provided in master_file
-                Nz_file: Reads the Nz file provided in param.cfg
+                Nz_file: Reads the Nz file provided in param.cfg (DEFAULT)
             master_file (str or Path): Path to the master catalog of objects
         '''
         logger.debug('Defining bins')
@@ -211,7 +211,7 @@ class ReadTheoryCoLoRe:
 
         return zs.sum(axis=0) * bin_width
 
-    def combine_z_npoles(self, n, zbins, rsd, mode='pk', bias=None, method='CoLoRe', master_file=None):
+    def combine_z_npoles(self, n, zbins, rsd, mode='pk', bias=None, method='Nz_file', master_file=None):
         '''
         Get a prediction combining multipoles in different redshift bins.
         Args:
@@ -221,9 +221,9 @@ class ReadTheoryCoLoRe:
             bias (float, optional): Force a value for bias for each redshfit bin (Default: get it from bias filename).
             mode (str, optional): Whether to combine correlation function (xi) or power spectra (pk)
             method (str, optional): Method to extract the Nz histogram. Options:
-                CoLoRe: Reads the CoLoRe output files. (DEFAULT)
+                CoLoRe: Reads the CoLoRe output files. 
                 master_file: Reads the LyaCoLoRe master file provided in master_file
-                Nz_file: Reads the Nz file provided in param.cfg
+                Nz_file: Reads the Nz file provided in param.cfg. (DEFAULT)
             master_file(Path or str): Path to the LyaCoLoRe master file if master_file mode is used.
         '''
         logger.info(f'Combining redshifts.')
