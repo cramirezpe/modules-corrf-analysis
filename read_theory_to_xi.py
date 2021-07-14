@@ -3,6 +3,7 @@ from functools import cached_property
 from pathlib import Path
 
 import astropy
+from astropy.io import fits
 import camb
 import libconf
 import numpy as np
