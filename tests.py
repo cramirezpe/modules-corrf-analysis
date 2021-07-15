@@ -5,10 +5,13 @@
 """
 
 import unittest
+from unittest import skipIf
 from pathlib import Path
 from read_theory_to_xi import ReadXiCoLoReFromPk
 import numpy as np
+import os
 
+@skipIf('FAST_TEST' in os.environ, 'Skipping secondary functions')
 class TestCommon(unittest.TestCase):
     def setUp(self):
         self.sim_path = Path("/global/cscratch1/sd/damonge/CoLoRe_sims/sim1000")
@@ -134,20 +137,20 @@ class TestReadXiCoLoReFromPk(unittest.TestCase):
 
     def test_read_pk(self):
         mean = np.mean(self.theory.pk0)
-        self.assertAlmostEqual(mean, 2440.8291403792055)
+        self.assertAlmostEqual(mean, 2466.1518595321545)
         
         std = np.std(self.theory.pk0)
-        self.assertAlmostEqual(std, 5973.948179882572)
+        self.assertAlmostEqual(std, 5985.256239698585)
 
     def test_get_r(self):
         _ = self.theory.r
 
     def test_read_xi(self):
         mean = np.mean(self.theory.xi0)
-        self.assertAlmostEqual(mean, 307.05724631668767)
+        self.assertAlmostEqual(mean,  317.0726045133148)
         
         std = np.std(self.theory.xi0)
-        self.assertAlmostEqual(std, 1193.2714385926715)
+        self.assertAlmostEqual(std, 1190.9502887614178)
 
     def test_L_box(self):
         self.assertEqual(self.theory.L_box(), 5849.867290143846)
@@ -250,6 +253,7 @@ class TestReadXiCoLoReFromPk(unittest.TestCase):
             tracer='dd',
             bias_filename=self.bias_filename,
             smooth_factor=2,
+            smooth_factor_rsd=3,
             apply_lognormal=True)
 
 
