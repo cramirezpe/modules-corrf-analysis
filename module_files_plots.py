@@ -205,9 +205,7 @@ class Fitter:
         return err_
 
     def model(self, bias, smooth, smooth_rsd, pole):
-        self.theory.smooth_factor = smooth
-        self.theory.smooth_factor_rsd = smooth_rsd
-        xi = self.theory.get_npole(n=pole, z=self.z, bias=bias, rsd=self.rsd)
+        xi = self.theory.get_npole(n=pole, z=self.z, bias=bias, rsd=self.rsd, smooth=smooth, smooth_rsd=smooth_rsd)
         try:
             model_xi = interp1d(self.theory.xi0[0], xi)
         except AttributeError:
@@ -237,7 +235,8 @@ class Fitter:
                 free_params (list of str): List with the fields to set free (bias, smooth and smooth_rsd are the options).
 
             Returns:
-                Stores the results in the variable self.results.
+                Stores the results in the variable self.results; stores best values (or fixed values) in dict self.best_values
+                returns self.best_values
         '''
         assert isinstance(free_params, list) # I need a certain order in the free_params list for this method to work
 
@@ -264,6 +263,15 @@ class Fitter:
 
         self.results = minimize(function_to_minimize, x0=[defaults[_param] for _param in free_params],
             constraints=[dict(type='ineq', fun= lambda x: x[i]) for i, _param in enumerate(free_params)])
+
+        self.best_values = dict()
+        for _free_param, result in zip(free_params, self.results.x):
+            self.best_values[_free_param] = result
+        for _param in ('bias', 'smooth', 'smooth_rsd'):
+            if _param not in free_params:
+                self.best_values[_param] = defaults[_param]
+
+        return self.best_values
        
     def nu(self):
         nu_ = 0

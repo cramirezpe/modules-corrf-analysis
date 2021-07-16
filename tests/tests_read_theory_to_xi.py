@@ -1,6 +1,6 @@
 """
     Tests for read_theory_to_xi. Run it using:
-        coverage run --source . -m unittest tests.py
+        coverage run --source . -m unittest discover tests
         python -m coverage html --omit="*/tests*","*__init__.py","*hidden_*","setup.py"
 """
 
@@ -173,7 +173,7 @@ class TestReadXiCoLoReFromPk(unittest.TestCase):
         std = np.std(_pk)
         self.assertAlmostEqual(mean, 31778.6998344434)
         self.assertAlmostEqual(std, 51096.77284683284)
-
+    
     def test_get_theory_pk_fixed_bias_2(self):
         _, _pk = self.theory.get_theory_pk(z=0.3, bias=3, lognormal=True)
         mean = np.mean(_pk)
@@ -214,6 +214,17 @@ class TestReadXiCoLoReFromPk(unittest.TestCase):
         pk = self.theory.get_npole_pk(0, 0.3, rsd=False)
         mean = np.mean(pk)
         std = np.std(pk)
+        self.assertAlmostEqual(mean, 5662.23092510887)
+        self.assertAlmostEqual(std, 8366.678491541392)
+
+    def test_get_npole_pk_playing_with_smoothings(self):
+        smooth = self.theory.smooth_factor
+        smooth_rsd = self.theory.smooth_factor_rsd
+
+        pk = self.theory_smoothings.get_npole_pk(0, 0.3, rsd=False, smooth=smooth, smooth_rsd=smooth_rsd)
+        mean = np.mean(pk)
+        std = np.std(pk)
+        
         self.assertAlmostEqual(mean, 5662.23092510887)
         self.assertAlmostEqual(std, 8366.678491541392)
 
