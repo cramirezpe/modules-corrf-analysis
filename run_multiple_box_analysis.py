@@ -212,7 +212,7 @@ def do_plotting(args):
 
     logger.info('Setting zeff')
     if args.zeff is None:
-        zeff = theory.get_zeff(z=np.arange(args.zmin, args.zmax, 0.1))
+        zeff = theory.get_zeff(args.zmin, args.zmax)
     else:
         zeff = args.zeff
     logger.info(f'zeff:\t{zeff}')
