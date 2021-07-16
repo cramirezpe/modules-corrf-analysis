@@ -1,0 +1,35 @@
+verson 0.12
+DEBUG:__main__:main:data:	/global/cscratch1/sd/cramirez/NBodyKit/hanyu_david_box/catalogues//colore_2_full_rsd.fits
+randoms:	/global/cscratch1/sd/cramirez/NBodyKit/david_box/randoms_rsd.fits
+out_dir:	/global/cscratch1/sd/cramirez/NBodyKit/hanyu_david_box/binned_analysis_with_error//nside_2/rsd/0.1_200/0.1_0.3//0
+nthreads:	64
+mu_max:	1.0
+nmu_bins:	100
+min_bin:	0.1
+max_bin:	200.0
+n_bins:	41
+norsd:	False
+zmin:	0.1
+zmax:	0.3
+drq_format:	True
+zmin_covd:	0.01
+zmax_covd:	1.5
+zstep_covd:	0.005
+random_downsampling:	1
+pixel_mask:	[0]
+nside:	2
+log_level:	DEBUG
+DEBUG:__main__:main:Data files:/global/cscratch1/sd/cramirez/NBodyKit/hanyu_david_box/catalogues//colore_2_full_rsd.fits
+DEBUG:__main__:main:Random files:/global/cscratch1/sd/cramirez/NBodyKit/david_box/randoms_rsd.fits
+INFO:__main__:main:Reading file:
+	/global/cscratch1/sd/cramirez/NBodyKit/hanyu_david_box/catalogues//colore_2_full_rsd.fits
+		/global/cscratch1/sd/cramirez/NBodyKit/david_box/randoms_rsd.fits
+DEBUG:__main__:main:Length of data cat: 428941714
+DEBUG:__main__:main:Length of rand cat: 428941714
+DEBUG:__main__:main:Applying pixel mask
+DEBUG:__main__:main:Length of data after pixel mask: 8903082
+DEBUG:__main__:main:Length of rand after pixel mask: 8938521
+DEBUG:__main__:main:Length of data after z mask: 445938
+DEBUG:__main__:main:Length of rand after z mask: 451689
+INFO:__main__:main:Starting computation for current file:
+DEBUG:__main__:main:Relative ellapsed time: 77.18865919113159
