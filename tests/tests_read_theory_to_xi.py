@@ -4,12 +4,13 @@
         python -m coverage html --omit="*/tests*","*__init__.py","*hidden_*","setup.py"
 """
 
+import os
 import unittest
 from unittest import skipIf
 from pathlib import Path
 from read_theory_to_xi import ReadXiCoLoReFromPk
 import numpy as np
-import os
+
 
 @skipIf('FAST_TEST' in os.environ, 'Skipping secondary functions')
 class TestCommon(unittest.TestCase):
@@ -91,7 +92,7 @@ class TestCommon(unittest.TestCase):
     def test_growth_factor_below_alim(self):
         alim = 0.01 * self.theory.get_a_eq()
         self.assertAlmostEqual(self.theory.growth_factor(0.8*alim), 0.8*alim)
-
+   
 class TestReadXiCoLoReFromPk(unittest.TestCase):
     def setUp(self):
         self.sim_path = Path("/global/cscratch1/sd/damonge/CoLoRe_sims/sim1000")
@@ -131,6 +132,17 @@ class TestReadXiCoLoReFromPk(unittest.TestCase):
             bias_filename=self.bias_filename,
             pk_filename=self.pk_filename,
             apply_lognormal=False)
+
+        self.theory_smoothings = ReadXiCoLoReFromPk(self.sim_path,
+            source=2,
+            nz_filename=self.nz_filename,
+            tracer='dd',
+            bias_filename=self.bias_filename,
+            pk_filename=self.pk_filename,
+            smooth_factor=2,
+            smooth_factor_rsd=3,
+            apply_lognormal=True)
+
     
     def tearDown(self):
         pass
@@ -190,6 +202,14 @@ class TestReadXiCoLoReFromPk(unittest.TestCase):
         self.assertAlmostEqual(mean, 4854.853068072107)
         self.assertAlmostEqual(std, 7806.087905306993)
 
+    def test_get_theory_pk_2(self):
+        _, pk = self.theory_smoothings.get_theory_pk(z=0.3, lognormal=False, smooth=self.theory_smoothings.smooth_factor_rsd)
+        mean = np.mean(pk)
+        std = np.std(pk)
+
+        self.assertAlmostEqual(mean, 4870.014630657544)
+        self.assertAlmostEqual(std, 7808.11426332186)
+
     def test_get_npole_pk(self):
         pk = self.theory.get_npole_pk(0, 0.3, rsd=False)
         mean = np.mean(pk)
@@ -244,18 +264,18 @@ class TestReadXiCoLoReFromPk(unittest.TestCase):
         mean = np.mean(xi)
         std = np.std(xi)
         self.assertAlmostEqual(mean, 0.0008141703529694578)
-        self.assertAlmostEqual(std, 0.001857607536922607)      
+        self.assertAlmostEqual(std, 0.001857607536922607)    
 
-    def test_init(self):
-        _ = ReadXiCoLoReFromPk(self.sim_path,
-            source=2,
-            nz_filename=self.nz_filename,
-            tracer='dd',
-            bias_filename=self.bias_filename,
-            smooth_factor=2,
-            smooth_factor_rsd=3,
-            apply_lognormal=True)
+    def test_mixing_smoothings(self):
+        z = 0.4
+        pk_l = self.theory_smoothings.get_theory_pk(z, bias=None, lognormal=True, smooth=self.theory_smoothings.smooth_factor)[1]
+        pk_s = self.theory_smoothings.get_theory_pk(z, bias=None, lognormal=False, smooth=self.theory_smoothings.smooth_factor_rsd)[1]
+              
+        beta = self.theory_smoothings.beta_from_growth(z)
+        target = pk_l + (2*beta/3.0 + beta**2/5.0)*pk_s
 
+        value = self.theory_smoothings.get_npole_pk(0, z, True)
+        np.testing.assert_almost_equal(value, target)
 
 class TestLyaBox(unittest.TestCase):
     def setUp(self):
