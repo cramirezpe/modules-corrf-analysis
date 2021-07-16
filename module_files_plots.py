@@ -174,6 +174,8 @@ class Fitter:
 
         if smoothrsd0 is None:
             self.smoothrsd0 = self.smooth0
+        else:
+            self.smoothrsd0 = smoothrsd0
 
         r = self.boxes[0].savg
         mask = r > rmin
