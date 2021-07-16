@@ -395,7 +395,7 @@ class ReadTheoryCoLoRe:
         return dlogDdz
        
 class ReadXiCoLoReFromPk(ReadTheoryCoLoRe):
-    def __init__(self, box_path, source, tracer='dd', bias_filename=None, nz_filename=None, pk_filename=None, param_cfg_filename=None, zmin=None, zmax=None, smooth_factor=None, apply_lognormal=True):
+    def __init__(self, box_path, source, tracer='dd', bias_filename=None, nz_filename=None, pk_filename=None, param_cfg_filename=None, zmin=None, zmax=None, smooth_factor=None, smooth_factor_rsd=None, apply_lognormal=True):
         super().__init__(box_path=box_path,
                         source=source,
                         tracer=tracer,
@@ -420,13 +420,18 @@ class ReadXiCoLoReFromPk(ReadTheoryCoLoRe):
         else:
             self.smooth_factor = smooth_factor
 
+        if smooth_factor_rsd is None:
+            self.smooth_factor_rsd = self.smooth_factor
+        else:
+            self.smooth_factor_rsd = smooth_factor_rsd
+
         self.apply_lognormal = apply_lognormal
     
     @property
     def pk0(self):
         k, pk = np.loadtxt(self.pk_filename, unpack=True)
     
-        return k, pk*np.exp(-self.smooth_factor*k**2)
+        return k, pk
 
     @property
     def xi0(self):
@@ -435,34 +440,38 @@ class ReadXiCoLoReFromPk(ReadTheoryCoLoRe):
         r, xi = P2xi(k)(pk)
         return r, xi
 
-
     @cached_property
     def r(self):
         return self.xi0[0]
 
-    def get_theory(self, z, bias=None, lognormal=False): # pragma: no cover
-        r, xi = self.xi0
+    # def get_theory(self, z, bias=None, lognormal=False): # pragma: no cover
+    #     r, xi = self.xi0
         
-        if self.tracer == 'dd':
-            bias_factor = self.bias(z)**2 if bias is None else bias**2
-        elif self.tracer == 'dm':
-            bias_factor = self.bias(z) if bias is None else bias
-        else:
-            bias_factor = 1
+    #     if self.tracer == 'dd':
+    #         bias_factor = self.bias(z)**2 if bias is None else bias**2
+    #     elif self.tracer == 'dm':
+    #         bias_factor = self.bias(z) if bias is None else bias
+    #     else:
+    #         bias_factor = 1
 
 
-        growth_factor_factor = self.growth_factor(1/(1+z))/self.growth_factor(1)
-        growth_factor_factor **=2
+    #     growth_factor_factor = self.growth_factor(1/(1+z))/self.growth_factor(1)
+    #     growth_factor_factor **=2
 
-        evolved_xi = growth_factor_factor*xi
+    #     evolved_xi = growth_factor_factor*xi
 
-        if lognormal:
-            evolved_xi = from_xi_g_to_xi_ln(evolved_xi)
+    #     if lognormal:
+    #         evolved_xi = from_xi_g_to_xi_ln(evolved_xi)
 
-        return r, evolved_xi*bias_factor
+    #     return r, evolved_xi*bias_factor
 
-    def get_theory_pk(self, z, bias=None, lognormal=False):
+    def get_theory_pk(self, z, bias=None, lognormal=False, smooth=None):
         k, pk = self.pk0
+
+        if smooth is None:
+            pk *= np.exp(-self.smooth_factor*k**2)
+        else:
+            pk *= np.exp(-smooth*k**2)
         
         if self.tracer == 'dd':
             bias_factor = self.bias(z)**2 if bias is None else bias**2
@@ -527,27 +536,28 @@ class ReadXiCoLoReFromPk(ReadTheoryCoLoRe):
             
             logger.debug(f'beta value: {beta}')
 
+            pk_rsd_smooth = self.get_theory_pk(z, bias=bias, smooth=self.smooth_factor_rsd)[1]
             if np.isinf(beta) and (bias == 0): # pragma: no cover
                 logger.debug('Bias is zero. Computing theory with only clustering from RSD')
                 pk = self.get_theory_pk(z, bias=1)[1] # pk used should be the matter one, bias 1
                 if n == 0:
-                    return (f**2/5)*pk
+                    return (f**2/5)*pk_rsd_smooth
                 if n == 2:
-                    return (4*f**2/7.0)*pk
+                    return (4*f**2/7.0)*pk_rsd_smooth
                 if n == 4:
-                    return 8*beta**2/35 * pk
+                    return 8*beta**2/35 * pk_rsd_smooth
                 else:
                     raise ValueError('n not in 0 2 4')
 
             if n == 0:
                 logger.debug('returning monopole')
-                return pk_l + (2*beta/3.0 + beta**2/5.0)*pk
+                return pk_l + (2*beta/3.0 + beta**2/5.0)*pk_rsd_smooth
             if n == 2: 
                 logger.debug('returning quadrupole')
-                return (4*beta/3.0 + 4*beta**2/7.0)*pk
+                return (4*beta/3.0 + 4*beta**2/7.0)*pk_rsd_smooth
             if n == 4:
                 logger.debug('returning n=4')
-                return 8*beta**2/35 * pk
+                return 8*beta**2/35 * pk_rsd_smooth
             else: # pragma: no cover
                 raise ValueError('n not in 0 2 4')
 
