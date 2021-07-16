@@ -571,7 +571,7 @@ class ReadXiCoLoReFromPk(ReadTheoryCoLoRe):
             else: # pragma: no cover
                 raise ValueError('n not in 0 2 4')
 
-    def get_npole(self, n, z, rsd=True, bias=None):
+    def get_npole(self, n, z, rsd=True, bias=None, smooth=None, smooth_rsd=None):
         '''
         Compute the npole for the correspondent z_bin
 
@@ -586,7 +586,7 @@ class ReadXiCoLoReFromPk(ReadTheoryCoLoRe):
         '''
         k = self.pk0[0]
 
-        pkl = self.get_npole_pk(n=n, z=z, rsd=rsd, bias=bias)
+        pkl = self.get_npole_pk(n=n, z=z, rsd=rsd, bias=bias, smooth=smooth, smooth_rsd=smooth_rsd)
 
         _r, xil = P2xi(k, l=n)(pkl)
         # if n == 0:
