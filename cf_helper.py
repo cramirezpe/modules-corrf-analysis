@@ -17,7 +17,7 @@ class CFComputations:
         self.N_rand = 1/N_data_rand_ratio
         self.label = label
         
-    def __str__(self):
+    def __str__(self): # pragma: no cover
         return self.label
 
     @property
@@ -42,22 +42,11 @@ class CFComputations:
             return np.loadtxt(self.results_path / '0_RR.dat', dtype=self.dtypes)
 
     @property
-    def savg(self):
-        try:
-            return np.loadtxt(self.results_path / 'savg.dat')
-        except OSError:
-            return np.unique(( self.DD['smin'] + self.DD['smax'] ))/2  
-
-    @property
     def mubins(self):
         try:
             return np.loadtxt(self.results_path / 'mubins.dat')
         except OSError:
             return np.concatenate([[0], np.unique(self.DD['mu_max'])])
-
-    @property
-    def mumean(self):
-        return (self.mubins[1:] + self.mubins[:-1])/2
         
     @cached_property
     def cf(self):
@@ -65,21 +54,6 @@ class CFComputations:
                                           self.DD, self.DR, self.DR, self.RR)
         return self.cf
         
-    @cached_property
-    def monopole(self):
-        try:
-            self.cf_monopole = np.loadtxt(self.results_path / 'monopole.dat')
-        except OSError:
-            savg = ( self.DD['smin'] + self.DD['smax'] )/2
-            cf_monopole = []
-            for s in np.unique(savg):
-                cf_monopole.append( self.cf[savg == s].sum() )
-            
-            self.cf_monopole = cf_monopole
-            np.savetxt(self.results_path / 'monopole.dat', self.cf_monopole)
-
-        return self.cf_monopole
-    
     @cached_property
     def halotools_like_cf(self):
         cf_array = []
@@ -96,7 +70,7 @@ class CFComputations:
         
         return npole
 
-def main():
+def main(): # pragma: no cover
     import argparse
     import os
 
@@ -121,5 +95,5 @@ def main():
                 print('computing pole', pole)
                 cfccomp.compute_npole(pole)
 
-if __name__ == '__main__':
+if __name__ == '__main__': # pragma: no cover
     main()
