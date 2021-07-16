@@ -2,7 +2,7 @@ from pathlib import Path
 import os
 
 from cf_helper import CFComputations
-from read_theory_to_xi import ReadXiCoLoRe, ReadPkCoLoRe, CAMBCorrelation, ReadXiCoLoReFromPk
+from read_theory_to_xi import ReadXiCoLoReFromPk
 
 import numpy as np
 from functools import cached_property
@@ -50,74 +50,6 @@ class FileFuncs:
             output.append( CFComputations(_boxpath, N_data_rand_ratio=data_rand_ratio) )
         return output
 
-class fit_bias:
-    def __init__(self, boxes, z, poles, theory, bias0=3.5):
-        assert isinstance(list(poles), list)
-
-        self.boxes = boxes
-        self.z = z
-        self.poles = poles
-        self.bias0 = bias0
-        self.theory = theory
-
-        r = self.boxes[0].savg
-        mask = r > 50
-        mask &= r < 150
-        self.r = r[mask]
-        self.mask = mask
-
-    @cached_property
-    def xis(self):
-        xis = dict()
-        for pole in self.poles:
-            xis[pole] = np.array( [box.compute_npole(pole) for box in self.boxes] )
-        return xis
-
-    @cached_property
-    def data(self):
-        data_ = dict()
-        for pole in self.poles:
-            data_[pole] = self.xis[pole].mean(axis=0)[self.mask]
-        return data_
-
-    @cached_property
-    def err(self):
-        err_ = dict()
-        for pole in self.poles:
-            err_[pole] = self.xis[pole].std(axis=0, ddof=1)[self.mask]/len(self.boxes)
-        return err_
-
-    def model(self, bias , pole):
-        xi = self.theory.get_npole(n=pole, z=self.z, bias=bias)
-        try:
-            model_xi = interp1d(self.theory.xi0[0], xi)
-        except AttributeError:
-            model_xi = interp1d(self.theory.r, xi)
-        return model_xi(self.r)
-
-    def chi_i(self, pole, bias):
-        model_= self.model(bias, pole)
-        
-        if len(self.boxes) == 1:
-            return (self.data[pole]-model_)
-        else:
-            return (self.data[pole]-model_)/self.err[pole]
-
-    def chi2(self, bias):
-        chi2_ = 0
-        for pole in self.poles:
-            x = self.chi_i(pole, bias)
-            chi2_ += (x**2).sum()
-        return chi2_
-
-    def run_fit(self):
-        self.results = minimize(self.chi2, x0=self.bias0)
-                                
-    def nu(self):
-        nu_ = 0
-        for pole in self.poles:
-            nu_ += len(self.data[pole])
-        return nu_
 
 class Plots:
     @staticmethod
@@ -218,3 +150,112 @@ class Plots:
 def from_xi_g_to_xi_ln(xi):
     # return np.log(1 + xi)
     return np.exp(xi) - 1
+
+class Fitter:
+    def __init__(self, boxes, z, poles, theory, rsd, bias0=None, smooth0=None, smoothrsd0=None, rmin=50, rmax=150):
+        self.boxes  = boxes
+        self.z      = z
+        self.poles  = poles
+        
+        self.rsd    = rsd
+        self.theory = theory
+
+        if bias0 is None:
+            self.bias0  = theory.bias(z)
+        else:
+            self.bias0 = bias0
+
+        if smooth0 is None:
+            rsmooth = self.theory.param_cfg['field_par']['r_smooth']
+            n_grid  = self.theory.param_cfg['field_par']['n_grid']
+            self.smooth0 = rsmooth + (self.theory.L_box()/n_grid)**2/12
+        else:
+            self.smooth0 = smooth0
+
+        if smoothrsd0 is None:
+            self.smoothrsd0 = self.smooth0
+
+        r = self.boxes[0].savg
+        mask = r > rmin
+        mask &= r < rmax
+        self.r = r[mask]
+        self.mask = mask
+
+    @cached_property
+    def xis(self):
+        xis = dict()
+        for pole in self.poles:
+            xis[pole] = np.array( [box.compute_npole(pole) for box in self.boxes] )
+        return xis
+
+    @cached_property
+    def data(self):
+        data_ = dict()
+        for pole in self.poles:
+            data_[pole] = self.xis[pole].mean(axis=0)[self.mask]
+        return data_
+
+    @cached_property
+    def err(self):
+        err_ = dict()
+        for pole in self.poles:
+            err_[pole] = self.xis[pole].std(axis=0, ddof=1)[self.mask]/len(self.boxes)
+        return err_
+
+    def model(self, bias, smooth, smooth_rsd, pole):
+        self.theory.smooth_factor = smooth
+        self.theory.smooth_factor_rsd = smooth_rsd
+        xi = self.theory.get_npole(n=pole, z=self.z, bias=bias, rsd=self.rsd)
+        try:
+            model_xi = interp1d(self.theory.xi0[0], xi)
+        except AttributeError:
+            model_xi = interp1d(self.theory.r, xi)
+        return model_xi(self.r)
+
+    def chi_i(self, pole, bias, smooth, smooth_rsd):
+        model_= self.model(bias, smooth, smooth_rsd, pole)
+        
+        if len(self.boxes) == 1:
+            return (self.data[pole]-model_)
+        else:
+            return (self.data[pole]-model_)/self.err[pole]
+
+    def chi2(self, bias, smooth, smooth_rsd):
+        chi2_ = 0
+        for pole in self.poles:
+            x = self.chi_i(pole, bias, smooth, smooth_rsd)
+            chi2_ += (x**2).sum()
+        return np.log(chi2_)
+
+    def run_fit(self, free_params):
+        assert isinstance(free_params, list) # I need a certain order in the free_params list for this method to work
+
+        defaults = dict(
+            bias = self.bias0,
+            smooth = self.smooth0,
+            smooth_rsd = self.smoothrsd0,
+        )
+
+        for i in free_params:
+            assert i in ('bias', 'smooth', 'smooth_rsd') 
+
+        fixed_args = dict()
+        for _param in ('bias', 'smooth', 'smooth_rsd'):
+            if _param not in free_params:
+                fixed_args[_param] = defaults[_param]
+
+        def function_to_minimize(X):
+            free_args = dict()
+            for i, _free_param in enumerate(free_params):
+                free_args[_free_param] = X[i]
+
+            return self.chi2(**free_args, **fixed_args)
+
+        self.results = minimize(function_to_minimize, x0=[defaults[_param] for _param in free_params],
+            constraints=[dict(type='ineq', fun= lambda x: x[i]) for i, _param in enumerate(free_params)])
+       
+    def nu(self):
+        nu_ = 0
+        for pole in self.poles:
+            nu_ += len(self.data[pole])
+        return nu_
