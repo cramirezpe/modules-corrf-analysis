@@ -42,6 +42,13 @@ class CFComputations:
             return np.loadtxt(self.results_path / '0_RR.dat', dtype=self.dtypes)
 
     @property
+    def savg(self):
+        try:
+            return np.loadtxt(self.results_path / 'savg.dat')
+        except OSError:
+            return np.unique(( self.DD['smin'] + self.DD['smax'] ))/2  
+ 
+    @property
     def mubins(self):
         try:
             return np.loadtxt(self.results_path / 'mubins.dat')
