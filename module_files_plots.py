@@ -228,6 +228,15 @@ class Fitter:
         return np.log(chi2_)
 
     def run_fit(self, free_params):
+        '''
+            Run the fit with a certain number of free parameters. Initial guess given during the initialization of the class.
+
+            Args:
+                free_params (list of str): List with the fields to set free (bias, smooth and smooth_rsd are the options).
+
+            Returns:
+                Stores the results in the variable self.results.
+        '''
         assert isinstance(free_params, list) # I need a certain order in the free_params list for this method to work
 
         defaults = dict(
