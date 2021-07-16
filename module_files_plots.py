@@ -94,7 +94,7 @@ class Plots:
         # ax.legend()
 
     @staticmethod
-    def plot_theory(pole, z, theory, ax=None, plot_args=dict(), bias=None, rsd=True, apply_lognormal=False):
+    def plot_theory(pole, z, theory, ax=None, plot_args=dict(), bias=None, smooth=None, smooth_rsd=None, rsd=True, apply_lognormal=False):
         if ax is None:
             fig, ax = plt.subplots()
         plot_args = { **dict(c='C1'), **plot_args }
@@ -102,7 +102,7 @@ class Plots:
         # if bias is None:
         #     bias = theory.bias(z)
 
-        xi_th = np.asarray(theory.get_npole(n=pole, z=z, bias=bias, rsd=rsd))
+        xi_th = np.asarray(theory.get_npole(n=pole, z=z, bias=bias, rsd=rsd, smooth=smooth, smooth_rsd=smooth_rsd))
         if apply_lognormal:
             xi_th = np.asarray(from_xi_g_to_xi_ln(xi_th))
 
@@ -166,14 +166,12 @@ class Fitter:
             self.bias0 = bias0
 
         if smooth0 is None:
-            rsmooth = self.theory.param_cfg['field_par']['r_smooth']
-            n_grid  = self.theory.param_cfg['field_par']['n_grid']
-            self.smooth0 = rsmooth + (self.theory.L_box()/n_grid)**2/12
+            self.smooth0 = theory.smooth_factor
         else:
             self.smooth0 = smooth0
 
         if smoothrsd0 is None:
-            self.smoothrsd0 = self.smooth0
+            self.smoothrsd0 = theory.smooth_factor_rsd
         else:
             self.smoothrsd0 = smoothrsd0
 
