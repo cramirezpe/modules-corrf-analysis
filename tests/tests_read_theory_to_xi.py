@@ -37,7 +37,7 @@ class TestCommon(unittest.TestCase):
 
     def test_smooth(self):
         smooth = self.theory.smooth_factor
-        self.assertAlmostEqual(smooth, 4.611918222528009)
+        self.assertAlmostEqual(smooth, 0.9)
 
     def test_volume_between_zs(self):
         self.assertAlmostEqual(self.theory.get_volume_between_zs(0.6, 0.1).value, 44683901350.33176)
@@ -203,12 +203,12 @@ class TestReadXiCoLoReFromPk(unittest.TestCase):
         self.assertAlmostEqual(std, 7806.087905306993)
 
     def test_get_theory_pk_2(self):
-        _, pk = self.theory_smoothings.get_theory_pk(z=0.3, lognormal=False, smooth=self.theory_smoothings.smooth_factor_rsd)
+        _, pk = self.theory_smoothings.get_theory_pk(z=0.3, lognormal=False, smooth_factor=self.theory_smoothings.smooth_factor_rsd)
         mean = np.mean(pk)
         std = np.std(pk)
 
-        self.assertAlmostEqual(mean, 4870.014630657544)
-        self.assertAlmostEqual(std, 7808.11426332186)
+        self.assertAlmostEqual(mean, 4842.5106029438475)
+        self.assertAlmostEqual(std, 7803.821170882135)
 
     def test_get_npole_pk(self):
         pk = self.theory.get_npole_pk(0, 0.3, rsd=False)
@@ -218,10 +218,10 @@ class TestReadXiCoLoReFromPk(unittest.TestCase):
         self.assertAlmostEqual(std, 8366.678491541392)
 
     def test_get_npole_pk_playing_with_smoothings(self):
-        smooth = self.theory.smooth_factor
-        smooth_rsd = self.theory.smooth_factor_rsd
+        smooth_factor = self.theory.smooth_factor
+        smooth_factor_rsd = self.theory.smooth_factor_rsd
 
-        pk = self.theory_smoothings.get_npole_pk(0, 0.3, rsd=False, smooth=smooth, smooth_rsd=smooth_rsd)
+        pk = self.theory_smoothings.get_npole_pk(0, 0.3, rsd=False, smooth_factor=smooth_factor, smooth_factor_rsd=smooth_factor_rsd)
         mean = np.mean(pk)
         std = np.std(pk)
         
@@ -279,8 +279,8 @@ class TestReadXiCoLoReFromPk(unittest.TestCase):
 
     def test_mixing_smoothings(self):
         z = 0.4
-        pk_l = self.theory_smoothings.get_theory_pk(z, bias=None, lognormal=True, smooth=self.theory_smoothings.smooth_factor)[1]
-        pk_s = self.theory_smoothings.get_theory_pk(z, bias=None, lognormal=False, smooth=self.theory_smoothings.smooth_factor_rsd)[1]
+        pk_l = self.theory_smoothings.get_theory_pk(z, bias=None, lognormal=True, smooth_factor=self.theory_smoothings.smooth_factor)[1]
+        pk_s = self.theory_smoothings.get_theory_pk(z, bias=None, lognormal=False, smooth_factor=self.theory_smoothings.smooth_factor_rsd)[1]
               
         beta = self.theory_smoothings.beta_from_growth(z)
         target = pk_l + (2*beta/3.0 + beta**2/5.0)*pk_s

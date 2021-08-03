@@ -94,7 +94,7 @@ class Plots:
         # ax.legend()
 
     @staticmethod
-    def plot_theory(pole, z, theory, ax=None, plot_args=dict(), bias=None, smooth=None, smooth_rsd=None, rsd=True, apply_lognormal=False):
+    def plot_theory(pole, z, theory, ax=None, plot_args=dict(), bias=None, smooth_factor=None, smooth_factor_rsd=None, rsd=True, apply_lognormal=False):
         if ax is None:
             fig, ax = plt.subplots()
         plot_args = { **dict(c='C1'), **plot_args }
@@ -102,7 +102,7 @@ class Plots:
         # if bias is None:
         #     bias = theory.bias(z)
 
-        xi_th = np.asarray(theory.get_npole(n=pole, z=z, bias=bias, rsd=rsd, smooth=smooth, smooth_rsd=smooth_rsd))
+        xi_th = np.asarray(theory.get_npole(n=pole, z=z, bias=bias, rsd=rsd, smooth_factor=smooth_factor, smooth_factor_rsd=smooth_factor_rsd))
         if apply_lognormal:
             xi_th = np.asarray(from_xi_g_to_xi_ln(xi_th))
 
@@ -152,7 +152,7 @@ def from_xi_g_to_xi_ln(xi):
     return np.exp(xi) - 1
 
 class Fitter:
-    def __init__(self, boxes, z, poles, theory, rsd, bias0=None, smooth0=None, smoothrsd0=None, rmin=50, rmax=150):
+    def __init__(self, boxes, z, poles, theory, rsd, bias0=None, smooth_factor0=None, smooth_factor_rsd0=None, rmin=50, rmax=150):
         self.boxes  = boxes
         self.z      = z
         self.poles  = poles
@@ -165,15 +165,15 @@ class Fitter:
         else:
             self.bias0 = bias0
 
-        if smooth0 is None:
-            self.smooth0 = theory.smooth_factor
+        if smooth_factor0 is None:
+            self.smooth_factor0 = theory.smooth_factor
         else:
-            self.smooth0 = smooth0
+            self.smooth_factor0 = smooth_factor0
 
-        if smoothrsd0 is None:
-            self.smoothrsd0 = theory.smooth_factor_rsd
+        if smooth_factor_rsd0 is None:
+            self.smooth_factor_rsd0 = theory.smooth_factor_rsd
         else:
-            self.smoothrsd0 = smoothrsd0
+            self.smooth_factor_rsd0 = smooth_factor_rsd0
 
         r = self.boxes[0].savg
         mask = r > rmin
@@ -202,26 +202,26 @@ class Fitter:
             err_[pole] = self.xis[pole].std(axis=0, ddof=1)[self.mask]/len(self.boxes)
         return err_
 
-    def model(self, bias, smooth, smooth_rsd, pole):
-        xi = self.theory.get_npole(n=pole, z=self.z, bias=bias, rsd=self.rsd, smooth=smooth, smooth_rsd=smooth_rsd)
+    def model(self, bias, smooth_factor, smooth_factor_rsd, pole):
+        xi = self.theory.get_npole(n=pole, z=self.z, bias=bias, rsd=self.rsd, smooth_factor=smooth_factor, smooth_factor_rsd=smooth_factor_rsd)
         try:
             model_xi = interp1d(self.theory.xi0[0], xi)
         except AttributeError:
             model_xi = interp1d(self.theory.r, xi)
         return model_xi(self.r)
 
-    def chi_i(self, pole, bias, smooth, smooth_rsd):
-        model_= self.model(bias, smooth, smooth_rsd, pole)
+    def chi_i(self, pole, bias, smooth_factor, smooth_factor_rsd):
+        model_= self.model(bias, smooth_factor, smooth_factor_rsd, pole)
         
         if len(self.boxes) == 1:
             return (self.data[pole]-model_)
         else:
             return (self.data[pole]-model_)/self.err[pole]
 
-    def chi2(self, bias, smooth, smooth_rsd):
+    def chi2(self, bias, smooth_factor, smooth_factor_rsd):
         chi2_ = 0
         for pole in self.poles:
-            x = self.chi_i(pole, bias, smooth, smooth_rsd)
+            x = self.chi_i(pole, bias, smooth_factor, smooth_factor_rsd)
             chi2_ += (x**2).sum()
         return np.log(chi2_)
 
@@ -230,7 +230,7 @@ class Fitter:
             Run the fit with a certain number of free parameters. Initial guess given during the initialization of the class.
 
             Args:
-                free_params (list of str): List with the fields to set free (bias, smooth and smooth_rsd are the options).
+                free_params (list of str): List with the fields to set free (bias, smooth_factor and smooth_factor_rsd are the options).
 
             Returns:
                 Stores the results in the variable self.results; stores best values (or fixed values) in dict self.best_values
@@ -240,15 +240,15 @@ class Fitter:
 
         defaults = dict(
             bias = self.bias0,
-            smooth = self.smooth0,
-            smooth_rsd = self.smoothrsd0,
+            smooth_factor = self.smooth_factor0,
+            smooth_factor_rsd = self.smooth_factor_rsd0,
         )
 
         for i in free_params:
-            assert i in ('bias', 'smooth', 'smooth_rsd') 
+            assert i in ('bias', 'smooth_factor', 'smooth_factor_rsd') 
 
         fixed_args = dict()
-        for _param in ('bias', 'smooth', 'smooth_rsd'):
+        for _param in ('bias', 'smooth_factor', 'smooth_factor_rsd'):
             if _param not in free_params:
                 fixed_args[_param] = defaults[_param]
 
@@ -265,7 +265,7 @@ class Fitter:
         self.best_values = dict()
         for _free_param, result in zip(free_params, self.results.x):
             self.best_values[_free_param] = result
-        for _param in ('bias', 'smooth', 'smooth_rsd'):
+        for _param in ('bias', 'smooth_factor', 'smooth_factor_rsd'):
             if _param not in free_params:
                 self.best_values[_param] = defaults[_param]
 

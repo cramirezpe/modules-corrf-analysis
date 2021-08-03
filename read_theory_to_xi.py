@@ -395,7 +395,7 @@ class ReadTheoryCoLoRe:
         return dlogDdz
        
 class ReadXiCoLoReFromPk(ReadTheoryCoLoRe):
-    def __init__(self, box_path, source, tracer='dd', bias_filename=None, nz_filename=None, pk_filename=None, param_cfg_filename=None, zmin=None, zmax=None, smooth_factor=None, smooth_factor_rsd=None, apply_lognormal=True):
+    def __init__(self, box_path, source, tracer='dd', bias_filename=None, nz_filename=None, pk_filename=None, param_cfg_filename=None, zmin=None, zmax=None, smooth_factor=1.1, smooth_factor_rsd=1.0, apply_lognormal=True):
         super().__init__(box_path=box_path,
                         source=source,
                         tracer=tracer,
@@ -413,17 +413,10 @@ class ReadXiCoLoReFromPk(ReadTheoryCoLoRe):
         else:
             self.pk_filename = pk_filename
 
-        if smooth_factor is None:
-            r_smooth = self.param_cfg['field_par']['r_smooth']
-            n_grid   = self.param_cfg['field_par']['n_grid']
-            self._smooth_factor = r_smooth**2 + 0.9*(self.L_box()/n_grid)**2/12
-        else:
-            self._smooth_factor = smooth_factor
-
-        if smooth_factor_rsd is None:
-            self._smooth_factor_rsd = self.smooth_factor
-        else:
-            self._smooth_factor_rsd = smooth_factor_rsd
+        self.r_smooth = self.param_cfg['field_par']['r_smooth']
+        self.n_grid   = self.param_cfg['field_par']['n_grid']
+        self._smooth_factor = smooth_factor
+        self._smooth_factor_rsd = smooth_factor_rsd
 
         self.apply_lognormal = apply_lognormal
 
@@ -473,13 +466,15 @@ class ReadXiCoLoReFromPk(ReadTheoryCoLoRe):
 
     #     return r, evolved_xi*bias_factor
 
-    def get_theory_pk(self, z, bias=None, lognormal=False, smooth=None):
+    def get_theory_pk(self, z, bias=None, lognormal=False, smooth_factor=None):
         k, pk = self.pk0
+        
+        if smooth_factor is None:
+            smooth_factor = self.smooth_factor
 
-        if smooth is None:
-            pk *= np.exp(-self.smooth_factor*k**2)
-        else:
-            pk *= np.exp(-smooth*k**2)
+        smoothing = self.r_smooth**2 + smooth_factor*(self.L_box()/self.n_grid)**2/12
+
+        pk *= np.exp(-smoothing*k**2)
         
         if self.tracer == 'dd':
             bias_factor = self.bias(z)**2 if bias is None else bias**2
@@ -501,7 +496,7 @@ class ReadXiCoLoReFromPk(ReadTheoryCoLoRe):
 
         return k, evolved_pk
 
-    def get_npole_pk(self, n, z, rsd=True, bias=None, smooth=None, smooth_rsd=None):
+    def get_npole_pk(self, n, z, rsd=True, bias=None, smooth_factor=None, smooth_factor_rsd=None):
         '''
         Compute the npole for the correspondent z_bin
 
@@ -511,14 +506,14 @@ class ReadXiCoLoReFromPk(ReadTheoryCoLoRe):
             rsd (bool, optional): whether to include redshift space distortions. (default: True).
             bias (float, optional): force a value of bias. (default: compute the correspondent value of bias for the redshift given.')
         '''
-        smooth = smooth if smooth is not None else self.smooth_factor
-        smooth_rsd = smooth_rsd if smooth_rsd is not None else self.smooth_factor_rsd
+        smooth_factor = smooth_factor if smooth_factor is not None else self.smooth_factor
+        smooth_factor_rsd = smooth_factor_rsd if smooth_factor_rsd is not None else self.smooth_factor_rsd
         
         if self.apply_lognormal:
             logger.debug('Compute lognormalized input pk')
-            pk_l = self.get_theory_pk(z, bias=bias, lognormal=True, smooth=smooth)[1]
+            pk_l = self.get_theory_pk(z, bias=bias, lognormal=True, smooth_factor=smooth_factor)[1]
         else:
-            pk_l = self.get_theory_pk(z, bias=bias, smooth=smooth)[1]
+            pk_l = self.get_theory_pk(z, bias=bias, smooth_factor=smooth_factor)[1]
 
         if not rsd:
             logger.debug('No rsd')
@@ -546,10 +541,10 @@ class ReadXiCoLoReFromPk(ReadTheoryCoLoRe):
             
             logger.debug(f'beta value: {beta}')
 
-            pk_rsd_smooth = self.get_theory_pk(z, bias=bias, smooth=smooth_rsd)[1]
+            pk_rsd_smooth = self.get_theory_pk(z, bias=bias, smooth_factor=smooth_factor_rsd)[1]
             if np.isinf(beta) and (bias == 0): # pragma: no cover
                 logger.debug('Bias is zero. Computing theory with only clustering from RSD')
-                pk = self.get_theory_pk(z, bias=1, smooth=smooth_rsd)[1] # pk used should be the matter one, bias 1
+                pk = self.get_theory_pk(z, bias=1, smooth_factor=smooth_factor_rsd)[1] # pk used should be the matter one, bias 1
                 if n == 0:
                     return (f**2/5)*pk_rsd_smooth
                 if n == 2:
@@ -571,7 +566,7 @@ class ReadXiCoLoReFromPk(ReadTheoryCoLoRe):
             else: # pragma: no cover
                 raise ValueError('n not in 0 2 4')
 
-    def get_npole(self, n, z, rsd=True, bias=None, smooth=None, smooth_rsd=None):
+    def get_npole(self, n, z, rsd=True, bias=None, smooth_factor=None, smooth_factor_rsd=None):
         '''
         Compute the npole for the correspondent z_bin
 
@@ -586,7 +581,7 @@ class ReadXiCoLoReFromPk(ReadTheoryCoLoRe):
         '''
         k = self.pk0[0]
 
-        pkl = self.get_npole_pk(n=n, z=z, rsd=rsd, bias=bias, smooth=smooth, smooth_rsd=smooth_rsd)
+        pkl = self.get_npole_pk(n=n, z=z, rsd=rsd, bias=bias, smooth_factor=smooth_factor, smooth_factor_rsd=smooth_factor_rsd)
 
         _r, xil = P2xi(k, l=n)(pkl)
         # if n == 0:
