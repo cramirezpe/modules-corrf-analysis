@@ -26,6 +26,8 @@ class TestCommon(unittest.TestCase):
             tracer='dd',
             bias_filename=self.bias_filename,
             pk_filename=self.pk_filename,
+            smooth_factor=0.9,
+            smooth_factor_rsd=0.9,
             apply_lognormal=True)
     
     def tearDown(self):
@@ -106,6 +108,8 @@ class TestReadXiCoLoReFromPk(unittest.TestCase):
             tracer='dd',
             bias_filename=self.bias_filename,
             pk_filename=self.pk_filename,
+            smooth_factor=0.9,
+            smooth_factor_rsd=0.9,
             apply_lognormal=True)
 
         self.theory_dm = ReadXiCoLoReFromPk(self.sim_path,
@@ -114,6 +118,8 @@ class TestReadXiCoLoReFromPk(unittest.TestCase):
             tracer='dm',
             bias_filename=self.bias_filename,
             pk_filename=self.pk_filename,
+            smooth_factor=0.9,
+            smooth_factor_rsd=0.9,
             apply_lognormal=True)
         
         self.theory_mm = ReadXiCoLoReFromPk(self.sim_path,
@@ -122,6 +128,8 @@ class TestReadXiCoLoReFromPk(unittest.TestCase):
             tracer='mm',
             bias_filename=self.bias_filename,
             pk_filename=self.pk_filename,
+            smooth_factor=0.9,
+            smooth_factor_rsd=0.9,
             apply_lognormal=True)
 
             
@@ -131,6 +139,8 @@ class TestReadXiCoLoReFromPk(unittest.TestCase):
             tracer='dd',
             bias_filename=self.bias_filename,
             pk_filename=self.pk_filename,
+            smooth_factor=0.9,
+            smooth_factor_rsd=0.9,
             apply_lognormal=False)
 
         self.theory_smoothings = ReadXiCoLoReFromPk(self.sim_path,
@@ -295,6 +305,8 @@ class TestLyaBox(unittest.TestCase):
         self.theory = ReadXiCoLoReFromPk(self.sim_path,
             source=1,
             tracer='dd',
+            smooth_factor=0.9,
+            smooth_factor_rsd=0.9,
             apply_lognormal=True)
 
         self.master_file = Path('/global/project/projectdirs/desi/users/cramirez/lya_mock_2LPT_11_runs/LyaCoLoRe/LyaCoLoRe_lognormal/LyaCoLoRe_seed0_4096/master.fits')
