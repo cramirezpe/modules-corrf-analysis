@@ -395,7 +395,7 @@ class ReadTheoryCoLoRe:
         return dlogDdz
        
 class ReadXiCoLoReFromPk(ReadTheoryCoLoRe):
-    def __init__(self, box_path, source, tracer='dd', bias_filename=None, nz_filename=None, pk_filename=None, param_cfg_filename=None, zmin=None, zmax=None, smooth_factor=1.1, smooth_factor_rsd=1.0, apply_lognormal=True):
+    def __init__(self, box_path, source, tracer='dd', bias_filename=None, nz_filename=None, pk_filename=None, param_cfg_filename=None, zmin=None, zmax=None, smooth_factor=1.1, smooth_factor_rsd=1.1, analysis_bin_size=5, apply_lognormal=True):
         super().__init__(box_path=box_path,
                         source=source,
                         tracer=tracer,
@@ -417,6 +417,7 @@ class ReadXiCoLoReFromPk(ReadTheoryCoLoRe):
         self.n_grid   = self.param_cfg['field_par']['n_grid']
         self._smooth_factor = smooth_factor
         self._smooth_factor_rsd = smooth_factor_rsd
+        self.analysis_smoothing = (analysis_bin_size/2)**2/10
 
         self.apply_lognormal = apply_lognormal
 
@@ -472,7 +473,7 @@ class ReadXiCoLoReFromPk(ReadTheoryCoLoRe):
         if smooth_factor is None:
             smooth_factor = self.smooth_factor
 
-        smoothing = self.r_smooth**2 + smooth_factor*(self.L_box()/self.n_grid)**2/12
+        smoothing = self.r_smooth**2 + smooth_factor*(self.L_box()/self.n_grid)**2/12 + self.analysis_smoothing
 
         pk *= np.exp(-smoothing*k**2)
         
