@@ -98,7 +98,7 @@ class Plots:
         # ax.legend()
 
     @staticmethod
-    def plot_theory(pole, z, theory, ax=None, plot_args=dict(), bias=None, smooth_factor=None, smooth_factor_rsd=None, smooth_factor_cross=None, rsd=True, apply_lognormal=False):
+    def plot_theory(pole, z, theory, ax=None, plot_args=dict(), bias=None, smooth_factor=None, smooth_factor_rsd=None, smooth_factor_cross=None, rsd=True, apply_lognormal=False, fitted_region=(0,301)):
         if ax is None:
             fig, ax = plt.subplots()
         plot_args = { **dict(c='C1'), **plot_args }
@@ -111,7 +111,15 @@ class Plots:
             xi_th = np.asarray(from_xi_g_to_xi_ln(xi_th))
 
         msk = theory.r < 301
-        ax.plot(theory.r[msk], (theory.r[msk])**2*xi_th[msk], **plot_args)
+        msk_fitted = theory.r > fitted_region[0]
+        msk_fitted &= theory.r < fitted_region[1]
+
+        dashed_plot_args = dict(plot_args)
+        dashed_plot_args['label'] = None
+        dashed_plot_args['ls'] = '--'
+        
+        ax.plot(theory.r[msk], (theory.r[msk])**2*xi_th[msk], **dashed_plot_args)
+        ax.plot(theory.r[msk_fitted], theory.r[msk_fitted]**2*xi_th[msk_fitted], **plot_args)
         ax.set_xlabel(r'$r [Mpc/h]$')
         ax.set_ylabel(r'$r^2 \xi(r)$')
 
