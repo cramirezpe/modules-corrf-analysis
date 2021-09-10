@@ -311,7 +311,7 @@ class Fitter:
 
                 rows.append([_vars[i], _vars[j], correlation])
             except AttributeError:
-                return
+                rows.append([_vars[i], _vars[j], None])
         
         return tabulate(rows, headers=headers, tablefmt='github', numalign='decimal', stralign='left')
 
