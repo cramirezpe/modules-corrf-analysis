@@ -539,21 +539,18 @@ class ReadXiCoLoReFromPk(ReadTheoryCoLoRe):
         else:
             logger.debug('rsd')
             if bias is None:
-                logger.debug('Bias is none, computing it to get beta')
-                try:
-                    beta = self.beta_from_file(z)
-                except IndexError:
-                    logger.warning('Getting growth factor from CoLoRe files failed, computing growth factor...')
-                    beta = self.beta_from_growth(z)
                 bias = self.bias(z)
-            else:
-                try: 
-                    f = self.velocity_growth_factor(z, read_file=True)
-                except IndexError:
-                    logger.warning('Getting growth factor from CoLoRe files failed, computing growth factor...')
-                    f = self.velocity_growth_factor(z, read_file=False)
-                beta = f/bias
+                logger.debug('Bias is none, computing it to get beta')
+            try: 
+                try:
+            try: 
+                f = self.velocity_growth_factor(z, read_file=True)
+            except IndexError:
+                logger.warning('Getting growth factor from CoLoRe files failed, computing growth factor...')
+                f = self.velocity_growth_factor(z, read_file=False)
             
+            beta = f/bias
+
             logger.debug(f'beta value: {beta}')
 
             pk_rsd_smooth = self.get_theory_pk(z, bias=bias, smooth_factor=smooth_factor_rsd)[1]
