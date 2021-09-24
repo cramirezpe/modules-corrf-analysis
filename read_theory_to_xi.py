@@ -559,11 +559,11 @@ class ReadXiCoLoReFromPk(ReadTheoryCoLoRe):
                 logger.debug('Bias is zero. Computing theory with only clustering from RSD')
                 pk = self.get_theory_pk(z, bias=1, smooth_factor=smooth_factor_rsd)[1] # pk used should be the matter one, bias 1
                 if n == 0:
-                    return (f**2/5)*pk_rsd_smooth
+                    return (f**2/5.0)*pk
                 if n == 2:
-                    return (4*f**2/7.0)*pk_rsd_smooth
+                    return (4*f**2/7.0)*pk
                 if n == 4:
-                    return 8*beta**2/35 * pk_rsd_smooth
+                    return 8*f**2/35.0 * pk
                 else:
                     raise ValueError('n not in 0 2 4')
 
