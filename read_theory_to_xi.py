@@ -542,8 +542,6 @@ class ReadXiCoLoReFromPk(ReadTheoryCoLoRe):
                 bias = self.bias(z)
                 logger.debug('Bias is none, computing it to get beta')
             try: 
-                try:
-            try: 
                 f = self.velocity_growth_factor(z, read_file=True)
             except IndexError:
                 logger.warning('Getting growth factor from CoLoRe files failed, computing growth factor...')
