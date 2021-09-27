@@ -459,14 +459,18 @@ class ReadXiCoLoReFromPk(ReadTheoryCoLoRe):
         if smooth_factor is None:
             smooth_factor = self.smooth_factor
 
+        if bias is None:
+            bias = self.bias(z)
+
         smoothing = self.r_smooth**2 + smooth_factor*(self.L_box()/self.n_grid)**2/12 + self.analysis_smoothing
 
         pk *= np.exp(-smoothing*k**2)
         
         if tracer == 'dd':
-            bias_factor = self.bias(z)**2 if bias is None else bias**2
+            bias_factor = bias**2
         elif tracer == 'dm':
             bias_factor = self.bias(z) if bias is None else bias
+            # bias_factor *= np.exp(self.r_smooth**2*(bias**2-1)/2)
         elif tracer == 'mm':
             bias_factor = 1
         else:
