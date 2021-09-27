@@ -540,7 +540,7 @@ class ReadXiCoLoReFromPk(ReadTheoryCoLoRe):
             pk_cross = self.get_theory_pk(z, bias=bias, smooth_factor=smooth_factor_cross, tracer='dm')[1]
             pk_rsd   = self.get_theory_pk(z, bias=bias, smooth_factor=smooth_factor_rsd, tracer='mm')[1]
 
-            if n == 0: # @ consider using f and bias alone to make it more clear
+            if n == 0:
                 logger.debug('returning monopole')
                 return pk_l + pk_cross*2*f/(3.0*1) + pk_rsd*f**2/(5.0*1**2) #@ pk_l looks like linear!
             if n == 2: 
