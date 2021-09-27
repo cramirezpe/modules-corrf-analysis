@@ -23,7 +23,6 @@ class TestCommon(unittest.TestCase):
         self.theory = ReadXiCoLoReFromPk(self.sim_path,
             source=2,
             nz_filename=self.nz_filename,
-            tracer='dd',
             bias_filename=self.bias_filename,
             pk_filename=self.pk_filename,
             smooth_factor=0.9,
@@ -107,7 +106,6 @@ class TestReadXiCoLoReFromPk(unittest.TestCase):
         self.theory = ReadXiCoLoReFromPk(self.sim_path,
             source=2,
             nz_filename=self.nz_filename,
-            tracer='dd',
             bias_filename=self.bias_filename,
             pk_filename=self.pk_filename,
             smooth_factor=0.9,
@@ -119,7 +117,6 @@ class TestReadXiCoLoReFromPk(unittest.TestCase):
         self.theory_dm = ReadXiCoLoReFromPk(self.sim_path,
             source=2,
             nz_filename=self.nz_filename,
-            tracer='dm',
             bias_filename=self.bias_filename,
             pk_filename=self.pk_filename,
             smooth_factor=0.9,
@@ -131,7 +128,6 @@ class TestReadXiCoLoReFromPk(unittest.TestCase):
         self.theory_mm = ReadXiCoLoReFromPk(self.sim_path,
             source=2,
             nz_filename=self.nz_filename,
-            tracer='mm',
             bias_filename=self.bias_filename,
             pk_filename=self.pk_filename,
             smooth_factor=0.9,
@@ -144,7 +140,6 @@ class TestReadXiCoLoReFromPk(unittest.TestCase):
         self.theory_nolog = ReadXiCoLoReFromPk(self.sim_path,
             source=2,
             nz_filename=self.nz_filename,
-            tracer='dd',
             bias_filename=self.bias_filename,
             pk_filename=self.pk_filename,
             smooth_factor=0.9,
@@ -156,7 +151,6 @@ class TestReadXiCoLoReFromPk(unittest.TestCase):
         self.theory_smoothings = ReadXiCoLoReFromPk(self.sim_path,
             source=2,
             nz_filename=self.nz_filename,
-            tracer='dd',
             bias_filename=self.bias_filename,
             pk_filename=self.pk_filename,
             smooth_factor=2,
@@ -168,7 +162,6 @@ class TestReadXiCoLoReFromPk(unittest.TestCase):
         self.theory_with_analysis_smoothing = ReadXiCoLoReFromPk(self.sim_path,
             source=2,
             nz_filename=self.nz_filename,
-            tracer='dd',
             bias_filename=self.bias_filename,
             pk_filename=self.pk_filename,
             smooth_factor=2,
@@ -210,13 +203,13 @@ class TestReadXiCoLoReFromPk(unittest.TestCase):
         np.testing.assert_almost_equal([mean, std], [384406.2408837, 354083.5820729])
 
     def test_get_theory_pk_fixed_bias_3(self):
-        _, _pk = self.theory_dm.get_theory_pk(z=0.3, bias=3, lognormal=False)
+        _, _pk = self.theory_dm.get_theory_pk(z=0.3, bias=3, lognormal=False, tracer='dm')
         mean = np.mean(_pk)
         std = np.std(_pk)
         np.testing.assert_almost_equal([mean, std], [10592.903725 , 17032.2622074])
 
     def test_get_theory_pk_fixed_bias_4(self):
-        _, _pk = self.theory_mm.get_theory_pk(z=0.3, bias=3, lognormal=False)
+        _, _pk = self.theory_mm.get_theory_pk(z=0.3, bias=3, lognormal=False, tracer='mm')
         mean = np.mean(_pk)
         std = np.std(_pk)
         np.testing.assert_almost_equal([mean, std], [3530.9679083, 5677.4207358])
@@ -316,7 +309,6 @@ class TestLyaBox(unittest.TestCase):
 
         self.theory = ReadXiCoLoReFromPk(self.sim_path,
             source=1,
-            tracer='dd',
             smooth_factor=0.9,
             smooth_factor_cross=0.9,
             smooth_factor_rsd=0.9,
