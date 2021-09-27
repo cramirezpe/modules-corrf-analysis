@@ -21,12 +21,11 @@ class ReadTheoryCoLoRe:
     _default_Ob0 = 0.05
     _default_cosmo = astropy.cosmology.LambdaCDM(_default_h*100, Om0=_default_Om0, Ode0=_default_Ode0, Ob0=_default_Ob0)
 
-    def __init__(self, box_path, source, tracer='dd', bias_filename=None, nz_filename=None, param_cfg_filename=None, zmin=None, zmax=None):
+    def __init__(self, box_path, source, bias_filename=None, nz_filename=None, param_cfg_filename=None, zmin=None, zmax=None):
         '''
         Tool to get theoretical values from a CoLoRe sim
 
         Args:
-            tracer (str, optional): which tracer to use for computations (options are dd dm mm). Defaults to dd
             bias_filename (str or Path, optional): bias filename for computations with bias. Default: Searches for bias_filename in the param_cfg
             nz_filename (str or Path, optional): Nz filename. Default: Searches for nz_filename in the param_cfg
             param_cfg_filename (str or Path, optional): Path to param_cfg file. Used to search for nz_filename and bias_filename if they are not fixed. Default: globbing .cfg in the box path
@@ -34,9 +33,6 @@ class ReadTheoryCoLoRe:
             zmax (float, optional): zmax to consider when dealing with nz distribution. Defaults to zmax in paramcfg if it exists, 1000 if not.
         '''
 
-        if tracer not in ('dd', 'dm', 'mm'): # pragma: no cover
-            raise ValueError('Tracer should be in "dd", "dm", "mm"')
-        self.tracer = tracer
         self.box_path = Path(box_path)
         self.source = source
 
@@ -278,9 +274,9 @@ class ReadTheoryCoLoRe:
 
         return f/self.bias(z)
 
-    def velocity_growth_factor(self, z, read_file=True):
+    def velocity_growth_factor(self, z, read_file=True): #Naming here logarithmic_growth_rate
         '''
-        velocity growth factor f = dlogD/da(z):
+        velocity growth factor f = dlogD/da(z): # make sure about dlogD/dloga
         
         Args:
             z (float): Redshift to evaluate f
@@ -395,11 +391,10 @@ class ReadTheoryCoLoRe:
         return dlogDdz
        
 class ReadXiCoLoReFromPk(ReadTheoryCoLoRe):
-    def __init__(self, box_path, source, tracer='dd', bias_filename=None, nz_filename=None, pk_filename=None, param_cfg_filename=None, zmin=None, zmax=None, smooth_factor=1.1, smooth_factor_rsd=1.0, smooth_factor_cross=2.1, smooth_factor_analysis=0.35, 
+    def __init__(self, box_path, source, bias_filename=None, nz_filename=None, pk_filename=None, param_cfg_filename=None, zmin=None, zmax=None, smooth_factor=1.1, smooth_factor_rsd=1.0, smooth_factor_cross=2.1, smooth_factor_analysis=0.35, 
     analysis_bin_size=5, apply_lognormal=True):
         super().__init__(box_path=box_path,
                         source=source,
-                        tracer=tracer,
                         bias_filename=bias_filename,
                         nz_filename=nz_filename,
                         param_cfg_filename=param_cfg_filename,
@@ -436,7 +431,7 @@ class ReadXiCoLoReFromPk(ReadTheoryCoLoRe):
         return self._smooth_factor_cross
     
     @property
-    def pk0(self):
+    def pk0(self): #@ for the futrure this should be somthng like in_pk but its logspaced
         k, pk = np.loadtxt(self.pk_filename, unpack=True)
 
         _min = min(np.log10(k))
@@ -458,28 +453,7 @@ class ReadXiCoLoReFromPk(ReadTheoryCoLoRe):
     def r(self):
         return self.xi0[0]
 
-    # def get_theory(self, z, bias=None, lognormal=False): # pragma: no cover
-    #     r, xi = self.xi0
-        
-    #     if self.tracer == 'dd':
-    #         bias_factor = self.bias(z)**2 if bias is None else bias**2
-    #     elif self.tracer == 'dm':
-    #         bias_factor = self.bias(z) if bias is None else bias
-    #     else:
-    #         bias_factor = 1
-
-
-    #     growth_factor_factor = self.growth_factor(1/(1+z))/self.growth_factor(1)
-    #     growth_factor_factor **=2
-
-    #     evolved_xi = growth_factor_factor*xi
-
-    #     if lognormal:
-    #         evolved_xi = from_xi_g_to_xi_ln(evolved_xi)
-
-    #     return r, evolved_xi*bias_factor
-
-    def get_theory_pk(self, z, bias=None, lognormal=False, smooth_factor=None):
+    def get_theory_pk(self, z, bias=None, lognormal=False, smooth_factor=None, tracer='dd'):
         k, pk = self.pk0
         
         if smooth_factor is None:
@@ -489,12 +463,14 @@ class ReadXiCoLoReFromPk(ReadTheoryCoLoRe):
 
         pk *= np.exp(-smoothing*k**2)
         
-        if self.tracer == 'dd':
+        if tracer == 'dd':
             bias_factor = self.bias(z)**2 if bias is None else bias**2
-        elif self.tracer == 'dm':
+        elif tracer == 'dm':
             bias_factor = self.bias(z) if bias is None else bias
-        else:
+        elif tracer == 'mm':
             bias_factor = 1
+        else:
+            raise ValueError('invalid tracer', tracer)
 
 
         growth_factor_factor = self.growth_factor(1/(1+z))/self.growth_factor(1)
@@ -505,7 +481,8 @@ class ReadXiCoLoReFromPk(ReadTheoryCoLoRe):
         if lognormal:
             _r, _xi = P2xi(k)(evolved_pk)
             _xi = from_xi_g_to_xi_ln(_xi)
-            k, evolved_pk = xi2P(_r)(_xi)
+            _k, evolved_pk = xi2P(_r)(_xi)
+            np.testing.assert_almost_equal(k, _k)
 
         return k, evolved_pk
 
@@ -523,11 +500,15 @@ class ReadXiCoLoReFromPk(ReadTheoryCoLoRe):
         smooth_factor_rsd = smooth_factor_rsd if smooth_factor_rsd is not None else self.smooth_factor_rsd
         smooth_factor_cross = smooth_factor_cross if smooth_factor_cross is not None else self.smooth_factor_cross
         
+        if bias is None:
+            logger.debug('Bias is None, computing it from input file')
+            bias = self.bias(z)
+
         if self.apply_lognormal:
             logger.debug('Compute lognormalized input pk')
-            pk_l = self.get_theory_pk(z, bias=bias, lognormal=True, smooth_factor=smooth_factor)[1]
+            pk_l = self.get_theory_pk(z, bias=bias, lognormal=True, smooth_factor=smooth_factor, tracer='dd')[1]
         else:
-            pk_l = self.get_theory_pk(z, bias=bias, smooth_factor=smooth_factor)[1]
+            pk_l = self.get_theory_pk(z, bias=bias, smooth_factor=smooth_factor, tracer='dd')[1]
 
         if not rsd:
             logger.debug('No rsd')
@@ -537,43 +518,37 @@ class ReadXiCoLoReFromPk(ReadTheoryCoLoRe):
             else:
                 return np.zeros_like(pk_l)
         else:
-            logger.debug('rsd')
-            if bias is None:
-                bias = self.bias(z)
-                logger.debug('Bias is none, computing it to get beta')
-            try: 
+            logger.debug('Computing multipole with RSD')
+            try:
                 f = self.velocity_growth_factor(z, read_file=True)
             except IndexError:
-                logger.warning('Getting growth factor from CoLoRe files failed, computing growth factor...')
+                logger.warning('Getting growth factor from CoLoRe files failed, computing it...')
                 f = self.velocity_growth_factor(z, read_file=False)
-            
-            beta = f/bias
 
-            logger.debug(f'beta value: {beta}')
-
-            pk_rsd_smooth = self.get_theory_pk(z, bias=bias, smooth_factor=smooth_factor_rsd)[1]
-            pk_rsd_cross = self.get_theory_pk(z, bias=bias, smooth_factor=smooth_factor_cross)[1]
-            if np.isinf(beta) and (bias == 0): # pragma: no cover
-                logger.debug('Bias is zero. Computing theory with only clustering from RSD')
-                pk = self.get_theory_pk(z, bias=1, smooth_factor=smooth_factor_rsd)[1] # pk used should be the matter one, bias 1
-                if n == 0:
-                    return (f**2/5.0)*pk
-                if n == 2:
-                    return (4*f**2/7.0)*pk
-                if n == 4:
-                    return 8*f**2/35.0 * pk
-                else:
-                    raise ValueError('n not in 0 2 4')
-
+        if bias == 0:
+            logger.debug('Bias is zero. Computing theory with only clustering from RSD')
+            pk = self.get_theory_pk(z, bias=1, smooth_factor=smooth_factor_rsd)[1]
             if n == 0:
+                return (f**2/5.0)*pk
+            if n == 2:
+                return (4*f**2/7.0)*pk
+            if n == 4:
+                return 8*f**2/35.0 * pk
+            else:
+                raise ValueError('n not in 0 2 4')
+        else:
+            pk_cross = self.get_theory_pk(z, bias=bias, smooth_factor=smooth_factor_cross, tracer='dm')[1]
+            pk_rsd   = self.get_theory_pk(z, bias=bias, smooth_factor=smooth_factor_rsd, tracer='mm')[1]
+
+            if n == 0: # @ consider using f and bias alone to make it more clear
                 logger.debug('returning monopole')
-                return pk_l + pk_rsd_cross*2*beta/(3.0*1) + pk_rsd_smooth*beta**2/5.0 #
+                return pk_l + pk_cross*2*f/(3.0*1) + pk_rsd*f**2/(5.0*1**2) #@ pk_l looks like linear!
             if n == 2: 
                 logger.debug('returning quadrupole')
-                return pk_rsd_cross*4*beta/(3.0*1) + pk_rsd_smooth*4*beta**2/7.0
+                return pk_cross*4*f/(3.0*1) + pk_rsd*4*f**2/(7.0*1**2)
             if n == 4:
                 logger.debug('returning n=4')
-                return 8*beta**2/35 * pk_rsd_smooth
+                return 8*f**2/(35*1**2) * pk_rsd
             else: # pragma: no cover
                 raise ValueError('n not in 0 2 4')
 
@@ -586,6 +561,7 @@ class ReadXiCoLoReFromPk(ReadTheoryCoLoRe):
             z (float): redshift value for theory.
             rsd (bool, optional): whether to include redshift space distortions. (default: True).
             bias (float, optional): force a value of bias. (default: compute the correspondent value of bias for the redshift given.')
+            @ smooth here
 
         Returns:
             1-D array. Correlation for the given multipole
