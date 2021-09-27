@@ -128,13 +128,6 @@ def main():
         help='Arguments for theory plot (using literal eval)'
     )
 
-    parser.add_argument('--theory-method',
-        type=str,
-        default='input_pk',
-        choices=['output_CoLoRe', 'input_pk'],
-        help='Which theory method use (default: use input pk to compute it',
-    )
-
     parser.add_argument('--pk-smooth',
         type=float,
         default=6,
@@ -169,6 +162,9 @@ def main():
         print(table)
         return
 
+    fig, ax = plt.subplots()
+    args.ax = ax
+
     do_plotting(args)
 
 def do_plotting(args):
@@ -177,25 +173,15 @@ def do_plotting(args):
     pk_filename = args.pk_filename if args.pk_filename != "None" else None
 
     logger.info('Defining theory class')
-    if args.theory_method == 'input_pk':
-        logger.info('Using input pk method')
-        theory = ReadXiCoLoReFromPk(args.path_to_theory_box, 
-            source=args.source,
-            nz_filename=nz_filename, 
-            tracer='dd',
-            bias_filename=bias_filename,
-            pk_filename=pk_filename,
-            smooth_factor=args.pk_smooth,
-            apply_lognormal=not args.pk_skip_lognormal
-        )
-    else:
-        logger.info('Using output files from CoLoRe')
-        theory = ReadXiCoLoRe(args.path_to_theory_box, 
-            source=args.source,
-            nz_filename=nz_filename, 
-            tracer='dd',
-            bias_filename=bias_filename
-        )
+    logger.info('Using input pk method')
+    theory = ReadXiCoLoReFromPk(args.path_to_theory_box, 
+        source=args.source,
+        nz_filename=nz_filename, 
+        bias_filename=bias_filename,
+        pk_filename=pk_filename,
+        smooth_factor=args.pk_smooth,
+        apply_lognormal=not args.pk_skip_lognormal
+    )
 
     logger.info('Collecting corrfunc results')
     boxes = FileFuncs.mix_sims(
@@ -230,7 +216,8 @@ def do_plotting(args):
 
     data_args = { **dict(label=r'$z \in ({},{})$'.format(args.zmin, args.zmax)), **args.plot_data_args }
     for pole, title in zip(args.multipoles, titles):
-        fig, ax = plt.subplots()
+        if args.ax is None:
+            fig, ax = plt.subplots()
         Plots.plot_theory(pole, z=round(zeff, 1), theory=theory, ax=ax, plot_args=args.plot_theory_args, rsd=args.rsd, apply_lognormal=args.apply_lognormal_multipole)
         Plots.plot_data(pole, boxes=boxes, ax=ax, plot_args=data_args, rsd=args.rsd)
         ax.set_title(title)
