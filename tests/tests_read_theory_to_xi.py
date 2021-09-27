@@ -27,7 +27,9 @@ class TestCommon(unittest.TestCase):
             bias_filename=self.bias_filename,
             pk_filename=self.pk_filename,
             smooth_factor=0.9,
+            smooth_factor_cross=0.9,
             smooth_factor_rsd=0.9,
+            smooth_factor_analysis=0,
             apply_lognormal=True)
     
     def tearDown(self):
@@ -109,7 +111,9 @@ class TestReadXiCoLoReFromPk(unittest.TestCase):
             bias_filename=self.bias_filename,
             pk_filename=self.pk_filename,
             smooth_factor=0.9,
+            smooth_factor_cross=0.9,
             smooth_factor_rsd=0.9,
+            smooth_factor_analysis=0,
             apply_lognormal=True)
 
         self.theory_dm = ReadXiCoLoReFromPk(self.sim_path,
@@ -119,7 +123,9 @@ class TestReadXiCoLoReFromPk(unittest.TestCase):
             bias_filename=self.bias_filename,
             pk_filename=self.pk_filename,
             smooth_factor=0.9,
+            smooth_factor_cross=0.9,
             smooth_factor_rsd=0.9,
+            smooth_factor_analysis=0,
             apply_lognormal=True)
         
         self.theory_mm = ReadXiCoLoReFromPk(self.sim_path,
@@ -129,7 +135,9 @@ class TestReadXiCoLoReFromPk(unittest.TestCase):
             bias_filename=self.bias_filename,
             pk_filename=self.pk_filename,
             smooth_factor=0.9,
+            smooth_factor_cross=0.9,
             smooth_factor_rsd=0.9,
+            smooth_factor_analysis=0,
             apply_lognormal=True)
 
             
@@ -140,7 +148,9 @@ class TestReadXiCoLoReFromPk(unittest.TestCase):
             bias_filename=self.bias_filename,
             pk_filename=self.pk_filename,
             smooth_factor=0.9,
+            smooth_factor_cross=0.9,
             smooth_factor_rsd=0.9,
+            smooth_factor_analysis=0,
             apply_lognormal=False)
 
         self.theory_smoothings = ReadXiCoLoReFromPk(self.sim_path,
@@ -150,29 +160,39 @@ class TestReadXiCoLoReFromPk(unittest.TestCase):
             bias_filename=self.bias_filename,
             pk_filename=self.pk_filename,
             smooth_factor=2,
+            smooth_factor_cross=3,
             smooth_factor_rsd=3,
+            smooth_factor_analysis=0,
             apply_lognormal=True)
 
-    
+        self.theory_with_analysis_smoothing = ReadXiCoLoReFromPk(self.sim_path,
+            source=2,
+            nz_filename=self.nz_filename,
+            tracer='dd',
+            bias_filename=self.bias_filename,
+            pk_filename=self.pk_filename,
+            smooth_factor=2,
+            smooth_factor_cross=3,
+            smooth_factor_rsd=1,
+            smooth_factor_analysis=0.3,
+            apply_lognormal=True)
+
     def tearDown(self):
         pass
 
     def test_read_pk(self):
         mean = np.mean(self.theory.pk0)
-        self.assertAlmostEqual(mean, 2466.1518595321545)
-        
         std = np.std(self.theory.pk0)
-        self.assertAlmostEqual(std, 5985.256239698585)
+
+        np.testing.assert_almost_equal([mean, std], [2466.1525969, 5985.2580126])
 
     def test_get_r(self):
         _ = self.theory.r
 
     def test_read_xi(self):
         mean = np.mean(self.theory.xi0)
-        self.assertAlmostEqual(mean,  317.0726045133148)
-        
         std = np.std(self.theory.xi0)
-        self.assertAlmostEqual(std, 1190.9502887614178)
+        np.testing.assert_almost_equal([mean, std], [317.0723792, 1190.9480197])
 
     def test_L_box(self):
         self.assertEqual(self.theory.L_box(), 5849.867290143846)
@@ -181,51 +201,44 @@ class TestReadXiCoLoReFromPk(unittest.TestCase):
         _, _pk = self.theory.get_theory_pk(z=0.3, bias=3, lognormal=False)
         mean = np.mean(_pk)
         std = np.std(_pk)
-        self.assertAlmostEqual(mean, 31778.6998344434)
-        self.assertAlmostEqual(std, 51096.77284683284)
+        np.testing.assert_almost_equal([mean, std], [31778.7111751, 51096.7866222])
     
     def test_get_theory_pk_fixed_bias_2(self):
         _, _pk = self.theory.get_theory_pk(z=0.3, bias=3, lognormal=True)
         mean = np.mean(_pk)
         std = np.std(_pk)
-        self.assertAlmostEqual(mean, 384403.77828437777)
-        self.assertAlmostEqual(std, 354082.411167533)
+        np.testing.assert_almost_equal([mean, std], [384406.2408837, 354083.5820729])
 
     def test_get_theory_pk_fixed_bias_3(self):
         _, _pk = self.theory_dm.get_theory_pk(z=0.3, bias=3, lognormal=False)
         mean = np.mean(_pk)
         std = np.std(_pk)
-        self.assertAlmostEqual(mean, 10592.899944814464)
-        self.assertAlmostEqual(std, 17032.25761561095)
+        np.testing.assert_almost_equal([mean, std], [10592.903725 , 17032.2622074])
 
     def test_get_theory_pk_fixed_bias_4(self):
         _, _pk = self.theory_mm.get_theory_pk(z=0.3, bias=3, lognormal=False)
         mean = np.mean(_pk)
         std = np.std(_pk)
-        self.assertAlmostEqual(mean, 3530.9666482714892)
-        self.assertAlmostEqual(std, 5677.419205203649)
+        np.testing.assert_almost_equal([mean, std], [3530.9679083, 5677.4207358])
 
     def test_get_theory_pk(self):
         _, pk = self.theory.get_theory_pk(z=0.3, lognormal=False)
         mean = np.mean(pk)
         std = np.std(pk)
-        self.assertAlmostEqual(mean, 4854.853068072107)
-        self.assertAlmostEqual(std, 7806.087905306993)
+        np.testing.assert_almost_equal([mean, std], [4854.8548006, 7806.0900098])
 
     def test_get_theory_pk_2(self):
         _, pk = self.theory_smoothings.get_theory_pk(z=0.3, lognormal=False, smooth_factor=self.theory_smoothings.smooth_factor_rsd)
         mean = np.mean(pk)
         std = np.std(pk)
 
-        self.assertAlmostEqual(mean, 4842.5106029438475)
-        self.assertAlmostEqual(std, 7803.821170882135)
+        np.testing.assert_almost_equal([mean, std], [4842.5123089, 7803.8232742])
 
     def test_get_npole_pk(self):
         pk = self.theory.get_npole_pk(0, 0.3, rsd=False)
         mean = np.mean(pk)
         std = np.std(pk)
-        self.assertAlmostEqual(mean, 5662.23092510887)
-        self.assertAlmostEqual(std, 8366.678491541392)
+        np.testing.assert_almost_equal([mean, std], [5661.9906253, 8366.7728458])
 
     def test_get_npole_pk_playing_with_smoothings(self):
         smooth_factor = self.theory.smooth_factor
@@ -235,8 +248,7 @@ class TestReadXiCoLoReFromPk(unittest.TestCase):
         mean = np.mean(pk)
         std = np.std(pk)
         
-        self.assertAlmostEqual(mean, 5662.23092510887)
-        self.assertAlmostEqual(std, 8366.678491541392)
+        np.testing.assert_almost_equal([mean, std], [5661.9906253, 8366.7728458])
 
     def test_get_npole_pk_2(self):
         pk = self.theory.get_npole_pk(2, 0.3, rsd=False)
@@ -249,43 +261,43 @@ class TestReadXiCoLoReFromPk(unittest.TestCase):
         pk = self.theory.get_npole_pk(0, 0.3, rsd=True)
         mean = np.mean(pk)
         std = np.std(pk)
-        self.assertAlmostEqual(mean, 7832.998485753411)
-        self.assertAlmostEqual(std, 11850.370762557883)
+        np.testing.assert_almost_equal([mean, std], [7832.7589607, 11850.477662])
 
     def test_get_npole_pk_4(self):
         pk = self.theory.get_npole_pk(2, 0.3, rsd=True)
         mean = np.mean(pk)
         std = np.std(pk)
-        self.assertAlmostEqual(mean, 4614.22392676962)
-        self.assertAlmostEqual(std, 7419.181812939575)
+        np.testing.assert_almost_equal([mean, std], [4614.2255734, 7419.1838131])
 
     def test_get_npole_pk_5(self):
         pk = self.theory_nolog.get_npole_pk(2, 0.3, rsd=True)
         mean = np.mean(pk)
         std = np.std(pk)
-        self.assertAlmostEqual(mean, 4614.22392676962)
-        self.assertAlmostEqual(std, 7419.181812939575)        
+        np.testing.assert_almost_equal([mean, std], [4614.2255734, 7419.1838131])        
 
     def test_get_npole_pk_6(self):        
         pk = self.theory.get_npole_pk(4, 0.3, rsd=True)
         mean = np.mean(pk)
         std = np.std(pk)
-        self.assertAlmostEqual(mean, 363.5850739740466)
-        self.assertAlmostEqual(std, 584.6061680350734)
+        np.testing.assert_almost_equal([mean, std], [363.5852037, 584.6063256])
 
     def test_get_npole_pk_7(self):        
         pk = self.theory.get_npole_pk(0, 0.3, rsd=True, bias=0.4)
         mean = np.mean(pk)
         std = np.std(pk)
-        self.assertAlmostEqual(mean, 1524.7921471717505)
-        self.assertAlmostEqual(std, 2442.1272198962065)
+        np.testing.assert_almost_equal([mean, std], [1524.7644253, 2442.1429372])
+
+    def test_get_npole_pk_7(self):        
+        pk = self.theory_with_analysis_smoothing.get_npole_pk(0, 0.3, rsd=True, bias=0.4)
+        mean = np.mean(pk)
+        std = np.std(pk)
+        np.testing.assert_almost_equal([mean, std], [1516.5875394, 2440.126665 ])
 
     def test_get_npole(self):
         xi = self.theory.get_npole(4, 0.3, rsd=True)
         mean = np.mean(xi)
         std = np.std(xi)
-        self.assertAlmostEqual(mean, 0.0008141703529694578)
-        self.assertAlmostEqual(std, 0.001857607536922607)    
+        np.testing.assert_almost_equal([mean, std], [0.0008141703529694578, 0.001857607536922607])    
 
     def test_mixing_smoothings(self):
         z = 0.4
@@ -306,7 +318,9 @@ class TestLyaBox(unittest.TestCase):
             source=1,
             tracer='dd',
             smooth_factor=0.9,
+            smooth_factor_cross=0.9,
             smooth_factor_rsd=0.9,
+            smooth_factor_analysis=0,
             apply_lognormal=True)
 
         self.master_file = Path('/global/project/projectdirs/desi/users/cramirez/lya_mock_2LPT_11_runs/LyaCoLoRe/LyaCoLoRe_lognormal/LyaCoLoRe_seed0_4096/master.fits')
@@ -342,12 +356,10 @@ class TestLyaBox(unittest.TestCase):
         pk = self.theory.combine_z_npoles(0, [2.3, 2.4, 2.8], rsd=False, mode='pk', method='master_file', master_file=self.master_file)
         mean = np.mean(pk)
         std = np.std(pk)
-        np.testing.assert_almost_equal(mean, 15170.067024363809)
-        np.testing.assert_almost_equal(std, 19804.55115202347)
+        np.testing.assert_almost_equal([mean, std], [15169.6173497, 19804.6338665])
 
     def test_combine_z_npoles_xi(self):
         xi = self.theory.combine_z_npoles(0, [2.3, 2.4, 2.8], rsd=False, mode='xi', method='master_file', master_file=self.master_file)
         mean = np.mean(xi)
         std = np.std(xi)
-        np.testing.assert_almost_equal(mean, 10.439991963256283)
-        np.testing.assert_almost_equal(std, 9.691521839160348)
+        np.testing.assert_almost_equal([mean, std], [10.4406976, 9.692203])
