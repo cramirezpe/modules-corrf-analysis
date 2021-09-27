@@ -92,7 +92,7 @@ class Plots:
         # axs[1].set_ylabel(r'$\xi(r)/\xi_{th}(r)-1$')
         ax.set_title(title)
         # axs[1].set_title(title + ' ratio')
-        ax.set_xlabel(r'$r [Mpc/h]$')
+        ax.set_xlabel(r'$r \, [{\rm Mpc/h}]$')
 
         ax.set_xlim(-5, 200)
         # ax.legend()
@@ -117,10 +117,10 @@ class Plots:
         dashed_plot_args = dict(plot_args)
         dashed_plot_args['label'] = None
         dashed_plot_args['ls'] = '--'
-        
+
         ax.plot(theory.r[msk], (theory.r[msk])**2*xi_th[msk], **dashed_plot_args)
         ax.plot(theory.r[msk_fitted], theory.r[msk_fitted]**2*xi_th[msk_fitted], **plot_args)
-        ax.set_xlabel(r'$r [Mpc/h]$')
+        ax.set_xlabel(r'$r \, [{\rm Mpc/h}]$')
         ax.set_ylabel(r'$r^2 \xi(r)$')
 
     @staticmethod
@@ -136,7 +136,7 @@ class Plots:
             ax.plot(theory.pk0[0], theory.pk0[0]**2*xi_th, **plot_args) #compatibility with theories from pk
         except AttributeError:
             ax.plot(theory.r, theory.r**2*xi_th, **plot_args)
-        ax.set_xlabel(r'$r [Mpc/h]$')
+        ax.set_xlabel(r'$r \, [{\rm Mpc/h}]$')
         ax.set_ylabel(r'$r^2 \xi(r)$')
 
     @staticmethod
@@ -160,7 +160,7 @@ class Plots:
             delta_r = np.append(delta_r, delta_r[-1])
         ax.errorbar(box.savg+delta_r, box.savg**2*xi, box.savg**2*xierr, **plot_args)      
         
-        ax.set_xlabel(r'$r [Mpc/h]$')
+        ax.set_xlabel(r'$r \, [{\rm Mpc/h}]$')
         ax.set_ylabel(r'$r^2 \xi(r)$')
 
 def from_xi_g_to_xi_ln(xi):
@@ -168,7 +168,7 @@ def from_xi_g_to_xi_ln(xi):
     return np.exp(xi) - 1
 
 class Fitter:
-    def __init__(self, boxes, z, poles, theory, rsd, bias0=None, smooth_factor0=None, smooth_factor_rsd0=None, smooth_factor_cross0=None, rmin=50, rmax=150):
+    def __init__(self, boxes, z, poles, theory, rsd, bias0=None, smooth_factor0=None, smooth_factor_rsd0=None, smooth_factor_cross0=None, rmin=None, rmax=None):
         self.boxes  = boxes
         self.z      = z
         self.poles  = poles
@@ -196,11 +196,13 @@ class Fitter:
         else:
             self.smooth_factor_cross0 = smooth_factor_cross0
 
-        r = self.boxes[0].savg
-        mask = r > rmin
-        mask &= r < rmax
-        self.r = r[mask]
-        self.mask = mask
+        self.r = self.boxes[0].savg
+        self.rmin = rmin if rmin is not None else {0:10, 2:40}
+        self.rmax = rmax if rmax is not None else {0:200, 2:200}
+
+        self.masks = dict()
+        for _pole in poles:
+            self.masks[_pole] = (self.r > self.rmin[_pole]) & (self.r < self.rmax[_pole])
 
     @cached_property
     def xis(self):
@@ -213,14 +215,14 @@ class Fitter:
     def data(self):
         data_ = np.array([])
         for _pole in self.poles:
-            data_ = np.append(data_, self.xis[_pole].mean(axis=0)[self.mask])
+            data_ = np.append(data_, self.xis[_pole].mean(axis=0)[self.masks[_pole]])
         return data_
 
     @cached_property
     def err(self):
         err_ = np.array([])
         for _pole in self.poles:
-            err_ = np.append(err_, self.xis[_pole].std(axis=0, ddof=1)[self.mask]/len(self.boxes))
+            err_ = np.append(err_, self.xis[_pole].std(axis=0, ddof=1)[self.masks[_pole]]/len(self.boxes))
         return err_
 
     def model(self, bias, smooth_factor, smooth_factor_rsd, smooth_factor_cross, pole):
@@ -242,7 +244,7 @@ class Fitter:
     def residual(self, params):
         _model = np.array([])
         for _pole in self.poles:
-            _model = np.append(_model, self.model(params['bias'], params['smooth_factor'], params['smooth_factor_rsd'], params['smooth_factor_cross'], _pole))
+            _model = np.append(_model, self.model(params['bias'], params['smooth_factor'], params['smooth_factor_rsd'], params['smooth_factor_cross'], _pole)[self.masks[_pole]])
 
         return (self.data -_model) / self.err
 
