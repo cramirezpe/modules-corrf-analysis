@@ -8,7 +8,7 @@ import os
 import unittest
 from unittest import skipIf
 from pathlib import Path
-from read_theory_to_xi import ReadXiCoLoReFromPk
+from read_theory_to_xi import ComputeModelsCoLoRe
 import numpy as np
 
 
@@ -20,7 +20,7 @@ class TestCommon(unittest.TestCase):
         self.nz_filename = Path('/global/u2/c/cramirez/Codes/CoLoRe/CoLoRe_LyA_v3/examples/LSST/NzBlue.txt')
         self.pk_filename = Path('/global/u2/c/cramirez/Codes/CoLoRe/CoLoRe_LyA_v3/examples/simple/Pk_CAMB_test.dat')
 
-        self.theory = ReadXiCoLoReFromPk(self.sim_path,
+        self.theory = ComputeModelsCoLoRe(self.sim_path,
             source=2,
             nz_filename=self.nz_filename,
             bias_filename=self.bias_filename,
@@ -77,11 +77,11 @@ class TestCommon(unittest.TestCase):
         values = np.asarray([0. , 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1. , 1.1, 1.2, 1.3])
         np.testing.assert_almost_equal(self.theory.z_bins_from_files(), values)
 
-    def test_beta_from_growth(self):
-        self.assertAlmostEqual(self.theory.beta_from_growth(0.8), 0.5523874685854183)
+    # def test_beta_from_growth(self):
+    #     self.assertAlmostEqual(self.theory.beta_from_growth(0.8), 0.5523874685854183)
     
-    def test_velocity_growth_factor(self):
-        self.assertAlmostEqual(self.theory.velocity_growth_factor(0.8, read_file=False), 0.8315978564605921)
+    def test_logarithmic_growth_rate(self):
+        self.assertAlmostEqual(self.theory.logarithmic_growth_rate(0.8, read_file=False), 0.8315978564605921)
 
     def test_bias(self):
         self.assertAlmostEqual(self.theory.bias(0.4), 1.23549395)
@@ -96,14 +96,14 @@ class TestCommon(unittest.TestCase):
         alim = 0.01 * self.theory.get_a_eq()
         self.assertAlmostEqual(self.theory.growth_factor(0.8*alim), 0.8*alim)
    
-class TestReadXiCoLoReFromPk(unittest.TestCase):
+class TestComputeModelsCoLoRe(unittest.TestCase):
     def setUp(self):
         self.sim_path = Path("/global/cscratch1/sd/damonge/CoLoRe_sims/sim1000")
         self.bias_filename = Path('/global/u2/c/cramirez/Codes/CoLoRe/CoLoRe_LyA_v3/examples/LSST/BzBlue.txt')
         self.nz_filename = Path('/global/u2/c/cramirez/Codes/CoLoRe/CoLoRe_LyA_v3/examples/LSST/NzBlue.txt')
         self.pk_filename = Path('/global/u2/c/cramirez/Codes/CoLoRe/CoLoRe_LyA_v3/examples/simple/Pk_CAMB_test.dat')
 
-        self.theory = ReadXiCoLoReFromPk(self.sim_path,
+        self.theory = ComputeModelsCoLoRe(self.sim_path,
             source=2,
             nz_filename=self.nz_filename,
             bias_filename=self.bias_filename,
@@ -114,7 +114,7 @@ class TestReadXiCoLoReFromPk(unittest.TestCase):
             smooth_factor_analysis=0,
             apply_lognormal=True)
 
-        self.theory_dm = ReadXiCoLoReFromPk(self.sim_path,
+        self.theory_dm = ComputeModelsCoLoRe(self.sim_path,
             source=2,
             nz_filename=self.nz_filename,
             bias_filename=self.bias_filename,
@@ -125,7 +125,7 @@ class TestReadXiCoLoReFromPk(unittest.TestCase):
             smooth_factor_analysis=0,
             apply_lognormal=True)
         
-        self.theory_mm = ReadXiCoLoReFromPk(self.sim_path,
+        self.theory_mm = ComputeModelsCoLoRe(self.sim_path,
             source=2,
             nz_filename=self.nz_filename,
             bias_filename=self.bias_filename,
@@ -137,7 +137,7 @@ class TestReadXiCoLoReFromPk(unittest.TestCase):
             apply_lognormal=True)
 
             
-        self.theory_nolog = ReadXiCoLoReFromPk(self.sim_path,
+        self.theory_nolog = ComputeModelsCoLoRe(self.sim_path,
             source=2,
             nz_filename=self.nz_filename,
             bias_filename=self.bias_filename,
@@ -148,7 +148,7 @@ class TestReadXiCoLoReFromPk(unittest.TestCase):
             smooth_factor_analysis=0,
             apply_lognormal=False)
 
-        self.theory_smoothings = ReadXiCoLoReFromPk(self.sim_path,
+        self.theory_smoothings = ComputeModelsCoLoRe(self.sim_path,
             source=2,
             nz_filename=self.nz_filename,
             bias_filename=self.bias_filename,
@@ -159,7 +159,7 @@ class TestReadXiCoLoReFromPk(unittest.TestCase):
             smooth_factor_analysis=0,
             apply_lognormal=True)
 
-        self.theory_with_analysis_smoothing = ReadXiCoLoReFromPk(self.sim_path,
+        self.theory_with_analysis_smoothing = ComputeModelsCoLoRe(self.sim_path,
             source=2,
             nz_filename=self.nz_filename,
             bias_filename=self.bias_filename,
@@ -174,8 +174,8 @@ class TestReadXiCoLoReFromPk(unittest.TestCase):
         pass
 
     def test_read_pk(self):
-        mean = np.mean(self.theory.pk0)
-        std = np.std(self.theory.pk0)
+        mean = np.mean(self.theory.input_pk)
+        std = np.std(self.theory.input_pk)
 
         np.testing.assert_almost_equal([mean, std], [2466.1525969, 5985.2580126])
 
@@ -183,8 +183,8 @@ class TestReadXiCoLoReFromPk(unittest.TestCase):
         _ = self.theory.r
 
     def test_read_xi(self):
-        mean = np.mean(self.theory.xi0)
-        std = np.std(self.theory.xi0)
+        mean = np.mean(self.theory.input_xi)
+        std = np.std(self.theory.input_xi)
         np.testing.assert_almost_equal([mean, std], [317.0723792, 1190.9480197])
 
     def test_L_box(self):
@@ -297,8 +297,9 @@ class TestReadXiCoLoReFromPk(unittest.TestCase):
         pk_l = self.theory_smoothings.get_theory_pk(z, bias=None, lognormal=True, smooth_factor=self.theory_smoothings.smooth_factor)[1]
         pk_s = self.theory_smoothings.get_theory_pk(z, bias=None, lognormal=False, smooth_factor=self.theory_smoothings.smooth_factor_rsd)[1]
               
-        beta = self.theory_smoothings.beta_from_growth(z)
-        target = pk_l + (2*beta/3.0 + beta**2/5.0)*pk_s
+        f = self.theory_smoothings.logarithmic_growth_rate(z, read_file=False)
+        bias = self.theory_smoothings.bias(z)
+        target = pk_l + (2*f/(3.0*bias) + (f/bias)**2/5.0)*pk_s
 
         value = self.theory_smoothings.get_npole_pk(0, z, True)
         np.testing.assert_almost_equal(value, target)
@@ -307,7 +308,7 @@ class TestLyaBox(unittest.TestCase):
     def setUp(self):
         self.sim_path = Path("/global/project/projectdirs/desi/users/cramirez/lya_mock_2LPT_runs/CoLoRe/CoLoRe_lognormal/CoLoRe_seed0_4096")
 
-        self.theory = ReadXiCoLoReFromPk(self.sim_path,
+        self.theory = ComputeModelsCoLoRe(self.sim_path,
             source=1,
             smooth_factor=0.9,
             smooth_factor_cross=0.9,
@@ -336,13 +337,13 @@ class TestLyaBox(unittest.TestCase):
         target = 2.234216481167806
         np.testing.assert_almost_equal(value, target)
 
-    def test_velocity_growth_factor(self):
-        value = self.theory.velocity_growth_factor(2.3)
+    def test_logarithmic_growth_rate(self):
+        value = self.theory.logarithmic_growth_rate(2.3)
         self.assertEqual(value, 0.9680556767606249)
 
-    def test_beta_from_file(self):
-        value = self.theory.beta_from_file(2.5)
-        self.assertEqual(value, 0.23565962090703166)
+    # def test_beta_from_file(self):
+    #     value = self.theory.beta_from_file(2.5)
+    #     self.assertEqual(value, 0.23565962090703166)
 
     def test_combine_z_npoles_pk(self):
         pk = self.theory.combine_z_npoles(0, [2.3, 2.4, 2.8], rsd=False, mode='pk', method='master_file', master_file=self.master_file)
