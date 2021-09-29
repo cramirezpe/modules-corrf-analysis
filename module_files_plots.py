@@ -90,58 +90,23 @@ class FileFuncs:
 
 
 class Plots:
-    @staticmethod
-    def plot_results_of_fit(fit, boxes, pole, title='', theory=None, ax=None, delta_r=0):
-        ''' Plot the results from a fit in a given axis.
-
-        Args:
-            fit (module_files_plots.Fitter object): Fitter object storing the fit we want to plot results of.
-            boxes (1D array of cf_helper.CFComputations objects): Boxes with the data information.
-            pole (int): Multipole that we want to plot.
-            title (str, optional): Title for the plot.
-            theory (read_theory_to_xi.ComputeModelsCoLoRe object, optional): Theory object used for the theoretical model. (Default: Theory from the fitter will be used).
-            ax (matplotlib.axes._subplots.AxesSubplot, optional): Axis to use. (Default: Create a new axis).
-            delta_r (float, optional): Displace theory by delta_r (for multiplotting). (Default: 0).
+    @classmethod
+    def plot_best_fit(cls, fitter, pole, ax=None, plot_args=dict()):
         '''
-        logger.info('Better to use plot_theory with bias value defined')
-        if ax is None:
-            fig, ax = plt.subplots()
+        fitter (module_files_plots.Fitter object): Fitter object storing the fit we want to plot results of.
+        pole (int): Multipole we want to plot.
+        ax (matplotlib.axes._subplots.AxesSubplot, optional): Axis to use. (Default: Create a new axis).
+        plot_args (dict, optional): Extra arguments for the plotting (e.g: c='C0'). (Default: dict()).
+        '''
 
-        box = boxes[0]
-        z = fit.z
-        bias = fit.results.x[0]
-        if theory is None:
-            theory = fit.theory
-
-        # fig, axs = plt.subplots(ncols=2)
-        
-        theory_r = theory.r
-        f = fit.f
-        beta = f/bias
-        
-        xi_th = theory.get_npole(n=pole, z=z, beta=beta)
-        ax.plot(theory_r, theory_r**2*xi_th, label=f'bias {bias}')
-        xi_th = interp1d(theory_r, xi_th)(box.savg)*box.savg**2
-        
-        xis = np.array( [box.compute_npole(pole)*box.savg**2 for box in boxes] )
-        xi = np.mean(xis, axis=0)
-        xierr = xis.std(axis=0, ddof=1)
-        xierr /= np.sqrt(len(xierr))
-        
-        ax.errorbar(box.savg+delta_r, xi, xierr, fmt='.')
-        # axs[1].errorbar(box.savg, xi/xi_th-1, xierr/xi_th, fmt='.')
-        # axs[1].set_ylim(-0.5, 0.5)
-        # axs[1].hlines(0, -1, 200, colors='k', lw=1)
-        
-        ax.set_ylabel(r'$r^2 \xi(r)$')
-        # axs[1].set_ylabel(r'$\xi(r)/\xi_{th}(r)-1$')
-        ax.set_title(title)
-        # axs[1].set_title(title + ' ratio')
-        ax.set_xlabel(r'$r \, [{\rm Mpc/h}]$')
-
-        ax.set_xlim(-5, 200)
-        # ax.legend()
-
+        fitted_region = (fitter.rmin[pole], fitter.rmax[pole])
+        cls.plot_theory(pole=pole, z=fitter.z, theory=fitter.theory,
+         ax=ax, bias=fitter.out.params['bias'].value, 
+                         smooth_factor=fitter.out.params['smooth_factor'].value, 
+                         smooth_factor_rsd=fitter.out.params['smooth_factor_rsd'].value, 
+                         smooth_factor_cross=fitter.out.params['smooth_factor_cross'].value, 
+                         fitted_region=fitted_region, plot_args=plot_args)
+           
     @staticmethod
     def plot_theory(pole, z, theory, ax=None, plot_args=dict(), bias=None, bias2=None, smooth_factor=None, smooth_factor_rsd=None, smooth_factor_cross=None, rsd=True, rsd2=None, fitted_region=(0,301)):
         ''' Plot a given model in a given axis.
