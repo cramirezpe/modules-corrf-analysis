@@ -12,6 +12,15 @@ class CFComputations:
     }
 
     def __init__(self, results_path, N_data_rand_ratio, label='', cross_correlation=False):
+        '''Class to handle results from corrfunc and compute multipoles.
+        
+        Args:
+            results_path (Path): Path to the results from corrfunc.
+            N_data_rand_ratio (float): Ratio data/randoms.
+            label (str, optional): Label the results object. (Default: '').
+            cross_correlation (bool, optional): Whether we are working with a cross-correlation. Needed to read RD correctly. (Default: False).
+
+            '''
         self.results_path = results_path
         self.N_data = 1
         self.N_rand = 1/N_data_rand_ratio
@@ -51,6 +60,7 @@ class CFComputations:
 
     @property
     def savg(self):
+        ''' Read savg (separations in r for the data'''
         try:
             return np.loadtxt(self.results_path / 'savg.dat')
         except OSError:
