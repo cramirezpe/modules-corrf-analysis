@@ -442,7 +442,7 @@ class ComputeModelsCoLoRe(ReadCoLoRe):
         return self._smooth_factor_cross
     
     @property
-    def input_pk(self): #@ for the futrure this should be somthng like in_pk but its logspaced
+    def input_pk(self):
         ''' log-spaced input power spectrum. Log spacing is desirable when applying FFTlog through mcfit.
         
         Returns:
