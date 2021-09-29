@@ -2,7 +2,7 @@ from pathlib import Path
 import os
 
 from cf_helper import CFComputations
-from read_theory_to_xi import ReadXiCoLoReFromPk
+from read_theory_to_xi import ComputeModelsCoLoRe
 
 import numpy as np
 from functools import cached_property
@@ -20,11 +20,33 @@ logger = logging.getLogger(__name__)
 class FileFuncs:
     @staticmethod
     def get_full_path(basedir, rsd=True, rmin=0.1, rmax=200, zmin=0.7, zmax=0.9, nside=2, N_bins=41):
+        '''Method to get the full path of a auto (not cross) correlation already existing.
+        
+        Args:
+            rsd (bool, optional): Whether to use RSD or not. (Default: True).
+            rmin (float, optional): Min. separation in the correlation output. (Default: 0.1).
+            rmax (float, optional): Max. separation in the correlation output. (Default: 200).
+            zmin (float, optional): Min. redshift for the correlation. (Default: 0.7).
+            zmax (float, optional): Max. redshift for the correlation. (Default: 0.9).
+            nside (float, optional): nside for the separation of the sky in pixels. Used to compute errorbars. (Default: 2).
+            N_bins (int, optional):  Number of bins for r. (Default: 41).
+
+        Returns:
+            Path to the results for each box (multiple boxes can be combined).
+        ''' 
         rsd = 'rsd' if rsd else 'norsd'
         return Path(basedir) / f'nside_{nside}' / rsd / f'{rmin}_{rmax}_{N_bins}' / f'{zmin}_{zmax}' 
 
     @staticmethod
     def get_available_pixels(path, boxes=None):
+        '''Method to search pixels with results inside of a given auto or cross correlation path
+        
+        Args:
+            boxes (array, optional): Array of the boxes we wan to include. (Default: Use all boxes available).
+
+        Returns:
+            1D array of Paths, pointing to each of the pixels for which there are correlations computed.
+        '''
         available_pixels = []
 
         if boxes is None:
@@ -38,7 +60,19 @@ class FileFuncs:
         return available_pixels
 
     @classmethod
-    def mix_sims(cls, path, boxes=None, pixels=None, data_rand_ratio=1):
+    def mix_sims(cls, path, boxes=None, pixels=None, data_rand_ratio=1, cross_correlation=False):
+        '''Method to create a CFComputations object for each of the available pixels in one or more boxes.
+        
+        Args:
+            path (Path): Path to the boxes. It can be obtained for auto-correlations using cls.get_full_path.
+            boxes (array, optional): Array of the boxes we want to include. (Default: All boxes available).
+            pixels (array, optional): Array of pixels we want to include. (Default: All available pixels).
+            data_rand_ratio (float, optional): Ratio data/randoms. (Default: 1).
+            cross_correlation (bool, optional): Whether we are working with a cross-correlation. Needed to read RD correctly. (Default: False). 
+
+        Returns:
+            1D array of CFComputations objects. 
+        '''
         boxes = [x.name for x in path.iterdir()] if boxes is None else boxes
 
         if pixels is None:
@@ -51,13 +85,24 @@ class FileFuncs:
 
         output = []
         for _boxpath in paths:
-            output.append( CFComputations(_boxpath, N_data_rand_ratio=data_rand_ratio) )
+            output.append( CFComputations(_boxpath, N_data_rand_ratio=data_rand_ratio, cross_correlation=cross_correlation) )
         return output
 
 
 class Plots:
     @staticmethod
     def plot_results_of_fit(fit, boxes, pole, title='', theory=None, ax=None, delta_r=0):
+        ''' Plot the results from a fit in a given axis.
+
+        Args:
+            fit (module_files_plots.Fitter object): Fitter object storing the fit we want to plot results of.
+            boxes (1D array of cf_helper.CFComputations objects): Boxes with the data information.
+            pole (int): Multipole that we want to plot.
+            title (str, optional): Title for the plot.
+            theory (read_theory_to_xi.ComputeModelsCoLoRe object, optional): Theory object used for the theoretical model. (Default: Theory from the fitter will be used).
+            ax (matplotlib.axes._subplots.AxesSubplot, optional): Axis to use. (Default: Create a new axis).
+            delta_r (float, optional): Displace theory by delta_r (for multiplotting). (Default: 0).
+        '''
         logger.info('Better to use plot_theory with bias value defined')
         if ax is None:
             fig, ax = plt.subplots()
@@ -98,7 +143,23 @@ class Plots:
         # ax.legend()
 
     @staticmethod
-    def plot_theory(pole, z, theory, ax=None, plot_args=dict(), bias=None, smooth_factor=None, smooth_factor_rsd=None, smooth_factor_cross=None, rsd=True, apply_lognormal=False, fitted_region=(0,301)):
+    def plot_theory(pole, z, theory, ax=None, plot_args=dict(), bias=None, bias2=None, smooth_factor=None, smooth_factor_rsd=None, smooth_factor_cross=None, rsd=True, rsd2=None, fitted_region=(0,301)):
+        ''' Plot a given model in a given axis.
+
+        Args:
+            z (float): Redshift to use for the model.
+            theory (read_theory_to_xi.ComputeModelsCoLoRe object, optional): Theory object used for the theoretical model. (Default: Theory from the fitter will be used).
+            ax (matplotlib.axes._subplots.AxesSubplot, optional): Axis to use. (Default: Create a new axis).
+            plot_args (dict, optional): Extra arguments for the plotting (e.g: c='C0'). (Default: dict()).
+            bias (float, optional): Value for the bias. (Default: Read it from the input bias).
+            bias2 (float, optional): When cross-correlating fields, bias for the second field. 
+            smooth_factor (float, optional): Smoothing prefactor for the lognormalized field dd (<delta_LN delta_LN>), as the 1.1 in "double rsm2_gg=par->r2_smooth+1.1*pow(par->l_box/par->n_grid,2)/12.". (Default: Value used in __init__ method).
+            smooth_factor_rsd (float, optional): Smoothing prefactor for the matter matter field. <delta_L delta_L>. (Default: Value used in __init__ method).
+            smooth_factor_cross (float, optional): Smoothing prefactor for the matter galaxy (dm) field. <delta_LN delta_L>. (Default: Value used in __init__ method).
+            rsd (bool, optional): Whether to include RSD. (Default: True).
+            rsd2 (bool, optional): Only for cross-correlations. Whether to include RSD for the second field. (Default: Same as rsd -> autocorrelation).
+            fitted_region (tuple, optional): Mark fitted region (rfit_min, rfit_max) with solid line.
+        '''
         if ax is None:
             fig, ax = plt.subplots()
         plot_args = { **dict(c='C1'), **plot_args }
@@ -106,9 +167,7 @@ class Plots:
         # if bias is None:
         #     bias = theory.bias(z)
 
-        xi_th = np.asarray(theory.get_npole(n=pole, z=z, bias=bias, rsd=rsd, smooth_factor=smooth_factor, smooth_factor_rsd=smooth_factor_rsd, smooth_factor_cross=smooth_factor_cross))
-        if apply_lognormal:
-            xi_th = np.asarray(from_xi_g_to_xi_ln(xi_th))
+        xi_th = np.asarray(theory.get_npole(n=pole, z=z, bias=bias, bias2=bias2, rsd=rsd, rsd2=rsd2, smooth_factor=smooth_factor, smooth_factor_rsd=smooth_factor_rsd, smooth_factor_cross=smooth_factor_cross))
 
         msk = theory.r < 301
         msk_fitted = theory.r > fitted_region[0]
@@ -124,23 +183,15 @@ class Plots:
         ax.set_ylabel(r'$r^2 \xi(r)$')
 
     @staticmethod
-    def plot_theory_mix_z(pole, z_array, theory, ax=None, plot_args=dict(), bias=None, rsd=True, apply_lognormal=False):
-        if ax is None:
-            fig, ax = plt.subplots()
-        plot_args = { **dict(c='C1'), **plot_args }
-
-        xi_th = theory.combine_z_using_Nz(rsd=rsd, n_pole=pole, z=z_array, bias=bias)
-        if apply_lognormal:
-            xi_th = from_xi_g_to_xi_ln(xi_th)
-        try:
-            ax.plot(theory.pk0[0], theory.pk0[0]**2*xi_th, **plot_args) #compatibility with theories from pk
-        except AttributeError:
-            ax.plot(theory.r, theory.r**2*xi_th, **plot_args)
-        ax.set_xlabel(r'$r \, [{\rm Mpc/h}]$')
-        ax.set_ylabel(r'$r^2 \xi(r)$')
-
-    @staticmethod
     def get_xi(pole, boxes):
+        ''' Get Xi and errorbars for a given set of data boxes
+        
+        Args:
+            boxes (1D array of cf_helper.CFComputations objects): Boxes with the data information.
+
+        Returns:
+            2D array (xi, xierr) with correlation and correlation error.
+        '''
         xis = np.array( [box.compute_npole(pole, ) for box in boxes] ) 
         xi = xis.mean(axis=0)
         xierr = xis.std(axis=0, ddof=1)/np.sqrt(len(boxes))
@@ -148,6 +199,15 @@ class Plots:
 
     @classmethod
     def plot_data(cls, pole, boxes, ax=None, plot_args=dict(), delta_r=0):
+        '''Plot data for the given boxes in an axis.
+        
+        Args:
+            pole (int): Multipole to plot.
+            boxes (1D array of cf_helper.CFComputations objects): Boxes with the data information.
+            ax (matplotlib.axes._subplots.AxesSubplot, optional): Axis to use. (Default: Create a new axis).
+            plot_args (dict, optional): Extra arguments for the plotting (e.g: c='C0'). (Default: dict()).
+            delta_r (float, optional): Displace theory by delta_r (for multiplotting). (Default: 0).
+        ''' 
         if ax is None:
             fig, ax = plt.subplots()
         
@@ -169,6 +229,21 @@ def from_xi_g_to_xi_ln(xi):
 
 class Fitter:
     def __init__(self, boxes, z, poles, theory, rsd, bias0=None, smooth_factor0=None, smooth_factor_rsd0=None, smooth_factor_cross0=None, rmin=None, rmax=None):
+        '''Fitter class used to fit bias (only for auto-correlations) and smooth_factors
+        
+        Args:
+            boxes (1D array of cf_helper.CFComputations objects): Boxes with the data information.
+            z (float): Redshift to use for the model.
+            poles (array of int): Multipoles to use for the fitter.
+            theory (read_theory_to_xi.ComputeModelsCoLoRe object, optional): Theory object used for the theoretical model.
+            rsd (bool): Whether to use RSD or not.
+            bias0 (float, optional): Initial value for bias. (Default: Read it from input bias).
+            smooth_factor0 (float, optional): Initial value for smooth_factor. (Default: Use the one from ComputeModelsCoLoRe.__init__).
+            smooth_factor_rsd0 (float, optional): Initial value for smooth_factor_rsd. (Default: Use the one from ComputeModelsCoLoRe.__init__).
+            smooth_factor_cross0 (float, optional): Initial value for smooth_factor_cross. (Default: Use the one from ComputeModelsCoLoRe.__init__).
+            rmin (dict, optional): Min r for the fits. (Default: {0:10, 2:40}, 10 for the monopole, 40 for the quadrupole).
+            rmax (dict, optional): Max r for the fits. (Default: {0:200, 2:200}, 200 both for monopole and quadrupole).
+        '''
         self.boxes  = boxes
         self.z      = z
         self.poles  = poles
@@ -206,6 +281,11 @@ class Fitter:
 
     @cached_property
     def xis(self):
+        '''Method to combine data from all the different boxes.
+        
+        Returns: 
+            2D array with the correlation for each box.
+        '''
         xis = dict()
         for pole in self.poles:
             xis[pole] = np.array( [box.compute_npole(pole) for box in self.boxes] )
@@ -213,6 +293,11 @@ class Fitter:
 
     @cached_property
     def data(self):
+        '''Method to obtain the correlation mean for all the different boxes.
+        
+        Returns:
+            1D array with the correlation.
+        '''
         data_ = np.array([])
         for _pole in self.poles:
             data_ = np.append(data_, self.xis[_pole].mean(axis=0)[self.masks[_pole]])
@@ -220,12 +305,29 @@ class Fitter:
 
     @cached_property
     def err(self):
+        '''Method to obtain the correlation error for all the different boxes.
+        
+        Returns:
+            1D array with the error.
+        '''
         err_ = np.array([])
         for _pole in self.poles:
             err_ = np.append(err_, self.xis[_pole].std(axis=0, ddof=1)[self.masks[_pole]]/len(self.boxes))
         return err_
 
     def model(self, bias, smooth_factor, smooth_factor_rsd, smooth_factor_cross, pole):
+        '''Method to get an interpolation object with a given model.
+        
+        Args:
+            bias (float): Bias to use for the model.
+            smooth_factor (float, optional): Smoothing prefactor for the lognormalized field dd (<delta_LN delta_LN>), as the 1.1 in "double rsm2_gg=par->r2_smooth+1.1*pow(par->l_box/par->n_grid,2)/12.".
+            smooth_factor_rsd (float, optional): Smoothing prefactor for the matter matter field. <delta_L delta_L>.
+            smooth_factor_cross (float, optional): Smoothing prefactor for the matter galaxy (dm) field. <delta_LN delta_L>.
+            pole (int): Multipole to compute.
+            
+        Returns:
+            interp1d object with a the model.
+        '''
         xi = self.theory.get_npole(n=pole, z=self.z, bias=bias, rsd=self.rsd, smooth_factor=smooth_factor, smooth_factor_rsd=smooth_factor_rsd, smooth_factor_cross=smooth_factor_cross)
         try:
             model_xi = interp1d(self.theory.xi0[0], xi)
@@ -233,15 +335,15 @@ class Fitter:
             model_xi = interp1d(self.theory.r, xi)
         return model_xi(self.r)
 
-    def chi_i(self, pole, bias, smooth_factor, smooth_factor_rsd, smooth_factor_cross):
-        model_= self.model(bias, smooth_factor, smooth_factor_rsd, smooth_factor_cross, pole)
-        
-        if len(self.boxes) == 1:
-            return (self.data[pole]-model_)
-        else:
-            return (self.data[pole]-model_)/self.err[pole]
-
     def residual(self, params):
+        '''Compute residual for a given parameters.
+        
+        Args:
+            params (Parameters): Parameters to compute the model with.
+            
+        Returns:
+            The residual float.
+        ''' 
         _model = np.array([])
         for _pole in self.poles:
             _model = np.append(_model, self.model(params['bias'], params['smooth_factor'], params['smooth_factor_rsd'], params['smooth_factor_cross'], _pole)[self.masks[_pole]])
@@ -256,7 +358,7 @@ class Fitter:
                 free_params (list of str): List with the fields to set free (bias, smooth_factor and smooth_factor_rsd are the options).
 
             Returns:
-                Run lmfit minimize and store output in self.out
+                lmfit minimize output. Which is also stored in self.out.
         '''
         assert isinstance(free_params, list) # I need a certain order in the free_params list for this method to work
 
@@ -280,6 +382,7 @@ class Fitter:
         return self.out
 
     def pars_tab(self):
+        '''Get a tabulate table with the results of the fit.'''
         headers = ['name', 'value', 'stderr', 'stderror(%)', 'init value', 'min', 'max', 'vary']
 
         rows = []
@@ -306,6 +409,7 @@ class Fitter:
         return tabulate(rows, headers=headers, tablefmt='github', numalign='decimal', stralign='left')
 
     def corrs_tab(self):
+        '''Get a tabulate table with the correlations within parameters of the fit.'''
         headers = ['name', 'name', 'corr']
         rows = []
         
@@ -324,22 +428,6 @@ class Fitter:
                 rows.append([_vars[i], _vars[j], None])
         
         return tabulate(rows, headers=headers, tablefmt='github', numalign='decimal', stralign='left')
-
-    def corr_coeff(self):
-        _vars = self.out.var_names
-        _var_nums = [i for i in range(len(_vars))]
-
-        print('Correlation coefficient:\n----------------------')
-        for pair in combinations(_var_nums, 2):
-            i, j = pair
-            try:
-                correlation = self.out.covar[i][j]
-                correlation /= np.sqrt(self.out.covar[i][i])
-                correlation /= np.sqrt(self.out.covar[j][j])
-
-                print(f'{_vars[i]}\t{_vars[j]}\t{correlation}')
-            except AttributeError:
-                return
        
     def nu(self):
         nu_ = len(self.data)
