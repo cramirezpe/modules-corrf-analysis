@@ -38,11 +38,11 @@ class FileFuncs:
         rsd = 'rsd' if rsd else 'norsd'
         if rsd2 != None:
             if rsd2:
-                rsd_string = rsd + '_rsd'
+                rsd += '_rsd'
             else:
-                rsd_string = rsd + '_norsd'
+                rsd += '_norsd'
 
-        return Path(basedir) / f'nside_{nside}' / rsd_string / f'{rmin}_{rmax}_{N_bins}' / f'{zmin}_{zmax}' 
+        return Path(basedir) / f'nside_{nside}' / rsd / f'{rmin}_{rmax}_{N_bins}' / f'{zmin}_{zmax}' 
 
     @staticmethod
     def get_available_pixels(path, boxes=None):
