@@ -11,11 +11,12 @@ class CFComputations:
     'formats': ('<f8', '<f8', '<f8', '<f8', '<f8', '<f8')
     }
 
-    def __init__(self, results_path, N_data_rand_ratio, label=''):
+    def __init__(self, results_path, N_data_rand_ratio, label='', cross_correlation=False):
         self.results_path = results_path
         self.N_data = 1
         self.N_rand = 1/N_data_rand_ratio
         self.label = label
+        self.cross_correlation = cross_correlation
         
     def __str__(self): # pragma: no cover
         return self.label
@@ -42,6 +43,13 @@ class CFComputations:
             return np.loadtxt(self.results_path / '0_RR.dat', dtype=self.dtypes)
 
     @property
+    def RD(self):
+        try:
+            return np.loadtxt(self.results_path / 'RD.dat', dtype=self.dtypes)
+        except OSError:
+            return np.loadtxt(self.results_path / '0_RD.dat', dtype=self.dtypes)
+
+    @property
     def savg(self):
         try:
             return np.loadtxt(self.results_path / 'savg.dat')
@@ -57,7 +65,11 @@ class CFComputations:
         
     @cached_property
     def cf(self):
-        self.cf = convert_3d_counts_to_cf(self.N_data, self.N_data, self.N_rand, self.N_rand, 
+        if self.cross_correlation:
+            self.cf = convert_3d_counts_to_cf(self.N_data, self.N_data, self.N_rand, self.N_rand, 
+                                          self.DD, self.DR, self.RD, self.RR)
+        else:
+            self.cf = convert_3d_counts_to_cf(self.N_data, self.N_data, self.N_rand, self.N_rand, 
                                           self.DD, self.DR, self.DR, self.RR)
         return self.cf
         
