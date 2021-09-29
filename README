@@ -2,3 +2,10 @@ This module is not a package, so every notebook should be placed in this same di
 
 The requirements can be installed by simply:
 pip install -r requirements.txt
+
+
+In order to run the test suite, unittest will be needed:
+pip install unittest
+
+The test suite can be run through:
+python -m unittest discover tests
