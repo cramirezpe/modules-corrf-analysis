@@ -336,9 +336,14 @@ class Fitter:
         Returns:
             The residual float.
         ''' 
+        if self.cross:
+            bias2=params['bias2']
+        else:
+            bias2=None
+        
         _model = np.array([])
         for _pole in self.poles:
-            _model = np.append(_model, self.model(params['bias'], params['smooth_factor'], params['smooth_factor_rsd'], params['smooth_factor_cross'], _pole, params['bias2'])[self.masks[_pole]])
+            _model = np.append(_model, self.model(params['bias'], params['smooth_factor'], params['smooth_factor_rsd'], params['smooth_factor_cross'], _pole, bias2)[self.masks[_pole]])
 
         return (self.data -_model) / self.err
 
@@ -370,7 +375,8 @@ class Fitter:
         params.add('smooth_factor', value=defaults['smooth_factor'], min=0, vary='smooth_factor' in free_params)
         params.add('smooth_factor_rsd', value=defaults['smooth_factor_rsd'], min=0, vary='smooth_factor_rsd' in free_params)
         params.add('smooth_factor_cross', value=defaults['smooth_factor_cross'], min=0, vary='smooth_factor_cross' in free_params)
-        params.add('bias2', value=defaults['bias2'], min=0, vary='bias2' in free_params)
+        if self.cross:
+            params.add('bias2', value=defaults['bias2'], min=0, vary='bias2' in free_params)
 
         self.out = lmfitminimize(self.residual, params)
         return self.out
