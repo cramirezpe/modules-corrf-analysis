@@ -597,7 +597,7 @@ class ComputeModelsCoLoRe(ReadCoLoRe):
         try:
             f = self.logarithmic_growth_rate(z, read_file=True)
         except IndexError:
-            logger.warning('Getting growth factor from CoLoRe files failed, computing it...')
+            logger.debug('Getting growth factor from CoLoRe files failed, computing it...')
             f = self.logarithmic_growth_rate(z, read_file=False)
         
         pk_rsd          = self.get_theory_pk(z, bias=None,  smooth_factor=smooth_factor_rsd, tracer='mm')[1]
