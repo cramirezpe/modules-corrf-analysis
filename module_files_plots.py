@@ -107,8 +107,15 @@ class Plots:
         '''
 
         fitted_region = (fitter.rmin[pole], fitter.rmax[pole])
+
+        bias=fitter.out.params['bias'].value
+        if fitter.cross:
+            bias2 = fitter.out.params['bias2'].value
+        else:
+            bias2 = bias
         cls.plot_theory(pole=pole, z=fitter.z, theory=fitter.theory,
-         ax=ax, bias=fitter.out.params['bias'].value, 
+         ax=ax, bias=bias, bias2=bias2,
+                        rsd=fitter.rsd, rsd2=fitter.rsd2,
                          smooth_factor=fitter.out.params['smooth_factor'].value, 
                          smooth_factor_rsd=fitter.out.params['smooth_factor_rsd'].value, 
                          smooth_factor_cross=fitter.out.params['smooth_factor_cross'].value, 
