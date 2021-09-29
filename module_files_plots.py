@@ -19,8 +19,8 @@ logger = logging.getLogger(__name__)
 
 class FileFuncs:
     @staticmethod
-    def get_full_path(basedir, rsd=True, rmin=0.1, rmax=200, zmin=0.7, zmax=0.9, nside=2, N_bins=41):
-        '''Method to get the full path of a auto (not cross) correlation already existing.
+    def get_full_path(basedir, rsd=True, rmin=0.1, rmax=200, zmin=0.7, zmax=0.9, nside=2, N_bins=41, rsd2=None):
+        '''Method to get the full path of a auto and cross correlation already existing.
         
         Args:
             rsd (bool, optional): Whether to use RSD or not. (Default: True).
@@ -30,12 +30,19 @@ class FileFuncs:
             zmax (float, optional): Max. redshift for the correlation. (Default: 0.9).
             nside (float, optional): nside for the separation of the sky in pixels. Used to compute errorbars. (Default: 2).
             N_bins (int, optional):  Number of bins for r. (Default: 41).
+            rsd2 (bool, optional): If cross-correlation, use RSD for the second field. (Default: None, cross-correlation search disabled).
 
         Returns:
             Path to the results for each box (multiple boxes can be combined).
-        ''' 
+        '''
         rsd = 'rsd' if rsd else 'norsd'
-        return Path(basedir) / f'nside_{nside}' / rsd / f'{rmin}_{rmax}_{N_bins}' / f'{zmin}_{zmax}' 
+        if rsd2 != None:
+            if rsd2:
+                rsd_string = rsd + '_rsd'
+            else:
+                rsd_string = rsd + '_norsd'
+
+        return Path(basedir) / f'nside_{nside}' / rsd_string / f'{rmin}_{rmax}_{N_bins}' / f'{zmin}_{zmax}' 
 
     @staticmethod
     def get_available_pixels(path, boxes=None):
