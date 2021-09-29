@@ -25,6 +25,11 @@ def main():
         type=str,   
         required=True, 
         help='Input glob pattern to data files')
+
+    parser.add_argument("--data2",
+        type=str,
+        required=False,
+        help='Input glob patterns to data2 files')
     
     parser.add_argument("--randoms",    
         type=str,   
@@ -120,10 +125,14 @@ def main():
     logger.debug("\n".join([f'{key}:\t{args.__dict__[key]}' for key in args.__dict__.keys()]))
 
     datacat = sorted(glob.glob(args.data))
+    if args.data2 != None:
+        datacat2 = sorted(glob.glob(args.data2))
     randcat = sorted(glob.glob(args.randoms))
     
 
     logger.debug('Data files:{}'.format("\n\t".join(datacat)))
+    if args.data2 != None:
+        logger.debug('Data2 files:{}'.format("\n\t".join(datacat2)))
     logger.debug('Random files:{}'.format("\n\t".join(randcat)))
 
     z=np.arange(args.zmin_covd,args.zmax_covd,args.zstep_covd)
@@ -136,12 +145,20 @@ def main():
     Path(args.out_dir).mkdir(exist_ok=True)
 
     info_file = Path(args.out_dir + '/README')
-    info_file.write_text(
+    if args.data2 != None:
+        info_file.write_text(
+        "\n".join(f"{i}\n\t{datacat[i]}\n\t{randcat[i]}\n\t{datacat2[i]}\n" for i in range(len(datacat)))
+        )
+    else:
+        info_file.write_text(
         "\n".join(f"{i}\n\t{datacat[i]}\n\t{randcat[i]}\n" for i in range(len(datacat)))
-    )
+        )
 
-    for imock in range(len(datacat)):   
-        logger.info(f'Reading file:\n\t{datacat[imock]}\n\t\t{randcat[imock]}') 
+    for imock in range(len(datacat)):
+        if args.data2 != None:
+            logger.info(f'Reading file:\n\t{datacat[imock]}\n\t{datacat2[imock]}\n\t{randcat[imock]}') 
+        else:
+            logger.info(f'Reading file:\n\t{datacat[imock]}\n\t{randcat[imock]}') 
         real_fits=fits.open(datacat[imock])
         rand_fits=fits.open(randcat[imock])
 
@@ -165,6 +182,15 @@ def main():
         logger.debug(f'Length of data cat: {len(data)}')
         logger.debug(f'Length of rand cat: {len(rand)}')
 
+        if args.data2 != None:
+            logger.info('Reading second data cat')
+            real2_fits=fits.open(datacat2[imock])
+            data2=np.empty(len(real2_fits[1].data),dtype=[('RA','f8'),('DEC','f8'),('Z','f8'),('Weight','f8')])
+            data2['RA']     = real2_fits[1].data['RA']
+            data2['DEC']    = real2_fits[1].data['DEC']
+            data2['Z']      = real2_fits[1].data[zfield]
+            logger.debug(f'Length of data2 cat: {len(data2)}')
+
         if args.random_downsampling != 1:
             logger.debug(f'Applying downsampling: {args.random_downsampling}')
             downsampling = args.random_downsampling
@@ -176,6 +202,11 @@ def main():
 
             logger.debug(f'Length of data after downsampling: {len(data)}')
             logger.debug(f'Length of rand after downsampling: {len(rand)}')
+
+            if args.data2 != None:
+                data2_mask = np.random.choice(a=[True, False], size=len(data2), p=[downsampling, 1-downsampling])
+                data2 = data2[data2_mask]
+                logger.debug(f'Length of data2 after downsampling: {len(data2)}')
     
         if args.pixel_mask is not None:
             logger.debug(f'Applying pixel mask')
@@ -190,9 +221,16 @@ def main():
 
             logger.debug(f'Length of data after pixel mask: {len(data)}')
             logger.debug(f'Length of rand after pixel mask: {len(rand)}')
+
+            if args.data2 != None:
+                data2_pixs = hp.ang2pix(args.nside, data2['RA'], data2['DEC'], lonlat=True)
+                data2_mask = np.in1d(data2_pixs, args.pixel_mask)
+
+                data2 = data2[data2_mask]
+                logger.debug(f'Length of data2 after pixel mask: {len(data2)}')
             
-        data_mask =  data[zfield] < args.zmax
-        data_mask &= data[zfield] > args.zmin
+        data_mask =  data['Z'] < args.zmax
+        data_mask &= data['Z'] > args.zmin
 
         rand_mask =  rand['Z'] < args.zmax
         rand_mask &= rand['Z'] > args.zmin
@@ -203,17 +241,40 @@ def main():
         logger.debug(f'Length of data after z mask: {len(data)}')
         logger.debug(f'Length of rand after z mask: {len(rand)}')
 
+        if args.data2 != None:
+            data2_mask = data2['Z']  < args.zmax
+            data2_mask &= data2['Z'] > args.zmin
+            data2=data2[data2_mask]
+            logger.debug(f'Length of data2 after z mask: {len(data2)}')
+
         cov_real=f(data['Z'])
         cov_rand=f(rand['Z'])
+        if args.data2 != None:
+            cov_real2=f(data2['Z'])
 
         bins2p=np.linspace(args.min_bin, args.max_bin, args.n_bins)
 
         logger.info('Starting computation for current file:')
         if logging.root.level <= logging.DEBUG:
             start_computation = time.time()
-        DD = DDsmu_mocks(autocorr=1,cosmology=2,nthreads=args.nthreads,mu_max=args.mu_max,nmu_bins=args.nmu_bins,binfile=bins2p,RA1=data['RA'],DEC1=data['DEC'],CZ1=cov_real,is_comoving_dist=True,verbose=True)
+
+        if args.data2 == None:
+            data2 = data
+            cov_real2 = cov_real
+        logger.info('Computing DD...')
+        if args.data2 != None:
+            autocorr=0
+        else:
+            autocorr=1
+        DD = DDsmu_mocks(autocorr=autocorr,cosmology=2,nthreads=args.nthreads,mu_max=args.mu_max,nmu_bins=args.nmu_bins,binfile=bins2p,RA1=data['RA'],DEC1=data['DEC'],CZ1=cov_real,RA2=data2['RA'], DEC2=data2['DEC'],CZ2=cov_real2, is_comoving_dist=True,verbose=True)
+        logger.info('Computing DR...')
         DR = DDsmu_mocks(autocorr=0,cosmology=2,nthreads=args.nthreads,mu_max=args.mu_max,nmu_bins=args.nmu_bins,binfile=bins2p,RA1=data['RA'],DEC1=data['DEC'],CZ1=cov_real,RA2=rand['RA'],DEC2=rand['DEC'],CZ2=cov_rand,is_comoving_dist=True,verbose=True)
+        logger.info('Computing RR...')
         RR = DDsmu_mocks(autocorr=1,cosmology=2,nthreads=args.nthreads,mu_max=args.mu_max,nmu_bins=args.nmu_bins,binfile=bins2p,RA1=rand['RA'],DEC1=rand['DEC'],CZ1=cov_rand,is_comoving_dist=True,verbose=True)
+        if args.data2 != None:
+            logger.info('Computing RD...')
+            RD = DDsmu_mocks(autocorr=0,cosmology=2,nthreads=args.nthreads,mu_max=args.mu_max,nmu_bins=args.nmu_bins,binfile=bins2p,RA1=rand['RA'],DEC1=rand['DEC'],CZ1=cov_rand,RA2=data2['RA'],DEC2=data2['DEC'],CZ2=cov_real2,is_comoving_dist=True,verbose=True)
+            np.savetxt(args.out_dir + f'/{imock}_RD.dat', RD)
         np.savetxt(args.out_dir + f'/{imock}_DD.dat', DD)
         np.savetxt(args.out_dir + f'/{imock}_DR.dat', DR)
         np.savetxt(args.out_dir + f'/{imock}_RR.dat', RR)
