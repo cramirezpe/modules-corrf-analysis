@@ -200,8 +200,8 @@ def from_xi_g_to_xi_ln(xi):
     return np.exp(xi) - 1
 
 class Fitter:
-    def __init__(self, boxes, z, poles, theory, rsd, bias0=None, smooth_factor0=None, smooth_factor_rsd0=None, smooth_factor_cross0=None, rmin=None, rmax=None):
-        '''Fitter class used to fit bias (only for auto-correlations) and smooth_factors
+    def __init__(self, boxes, z, poles, theory, rsd, rsd2=None, bias0=None, bias20=None, smooth_factor0=None, smooth_factor_rsd0=None, smooth_factor_cross0=None, rmin=None, rmax=None):
+        '''Fitter class used to fit bias and smooth_factors
         
         Args:
             boxes (1D array of cf_helper.CFComputations objects): Boxes with the data information.
@@ -209,7 +209,9 @@ class Fitter:
             poles (array of int): Multipoles to use for the fitter.
             theory (read_theory_to_xi.ComputeModelsCoLoRe object, optional): Theory object used for the theoretical model.
             rsd (bool): Whether to use RSD or not.
+            rsd2 (bool): For cross-correlations, use RSD for second field. (Default: None -> auto-correlation)
             bias0 (float, optional): Initial value for bias. (Default: Read it from input bias).
+            bias20 (float, optional): For cross-correlations, initial value for bias of field2. (Default: None -> auto-correlation)
             smooth_factor0 (float, optional): Initial value for smooth_factor. (Default: Use the one from ComputeModelsCoLoRe.__init__).
             smooth_factor_rsd0 (float, optional): Initial value for smooth_factor_rsd. (Default: Use the one from ComputeModelsCoLoRe.__init__).
             smooth_factor_cross0 (float, optional): Initial value for smooth_factor_cross. (Default: Use the one from ComputeModelsCoLoRe.__init__).
@@ -221,12 +223,22 @@ class Fitter:
         self.poles  = poles
         
         self.rsd    = rsd
+        self.rsd2   = rsd2
         self.theory = theory
 
         if bias0 is None:
             self.bias0  = theory.bias(z)
         else:
             self.bias0 = bias0
+
+        self.bias20 = bias20
+        if self.bias20 != None:
+            self.cross = True
+        else:
+            self.cross = False
+        if self.bias20==None or self.rsd2==None:
+            if self.bias20!=self.rsd2:
+                raise ValueError('bias2 and rsd should be both None or both not None!')
 
         if smooth_factor0 is None:
             self.smooth_factor0 = theory.smooth_factor
@@ -287,7 +299,7 @@ class Fitter:
             err_ = np.append(err_, self.xis[_pole].std(axis=0, ddof=1)[self.masks[_pole]]/len(self.boxes))
         return err_
 
-    def model(self, bias, smooth_factor, smooth_factor_rsd, smooth_factor_cross, pole):
+    def model(self, bias, smooth_factor, smooth_factor_rsd, smooth_factor_cross, pole, bias2):
         '''Method to get an interpolation object with a given model.
         
         Args:
@@ -296,15 +308,16 @@ class Fitter:
             smooth_factor_rsd (float, optional): Smoothing prefactor for the matter matter field. <delta_L delta_L>.
             smooth_factor_cross (float, optional): Smoothing prefactor for the matter galaxy (dm) field. <delta_LN delta_L>.
             pole (int): Multipole to compute.
+            bias2 (float): Bias for the second model, or None.
             
         Returns:
             interp1d object with a the model.
         '''
-        xi = self.theory.get_npole(n=pole, z=self.z, bias=bias, rsd=self.rsd, smooth_factor=smooth_factor, smooth_factor_rsd=smooth_factor_rsd, smooth_factor_cross=smooth_factor_cross)
-        try:
-            model_xi = interp1d(self.theory.xi0[0], xi)
-        except AttributeError:
-            model_xi = interp1d(self.theory.r, xi)
+        if not self.cross:
+            bias2=None
+
+        xi = self.theory.get_npole(n=pole, z=self.z, bias=bias, bias2=bias2, rsd=self.rsd, rsd2=self.rsd2, smooth_factor=smooth_factor, smooth_factor_rsd=smooth_factor_rsd, smooth_factor_cross=smooth_factor_cross)
+        model_xi = interp1d(self.theory.r, xi)
         return model_xi(self.r)
 
     def residual(self, params):
@@ -318,7 +331,7 @@ class Fitter:
         ''' 
         _model = np.array([])
         for _pole in self.poles:
-            _model = np.append(_model, self.model(params['bias'], params['smooth_factor'], params['smooth_factor_rsd'], params['smooth_factor_cross'], _pole)[self.masks[_pole]])
+            _model = np.append(_model, self.model(params['bias'], params['smooth_factor'], params['smooth_factor_rsd'], params['smooth_factor_cross'], _pole, params['bias2'])[self.masks[_pole]])
 
         return (self.data -_model) / self.err
 
@@ -327,7 +340,7 @@ class Fitter:
             Run the fit with a certain number of free parameters. Initial guess given during the initialization of the class.
 
             Args:
-                free_params (list of str): List with the fields to set free (bias, smooth_factor and smooth_factor_rsd are the options).
+                free_params (list of str): List with the fields to set free (bias, bias2, smooth_factor and smooth_factor_rsd are the options).
 
             Returns:
                 lmfit minimize output. Which is also stored in self.out.
@@ -336,19 +349,21 @@ class Fitter:
 
         defaults = dict(
             bias = self.bias0,
+            bias2 = self.bias20,
             smooth_factor = self.smooth_factor0,
             smooth_factor_rsd = self.smooth_factor_rsd0,
             smooth_factor_cross = self.smooth_factor_cross0
         )
 
         for i in free_params:
-            assert i in ('bias', 'smooth_factor', 'smooth_factor_rsd', 'smooth_factor_cross') 
+            assert i in ('bias', 'smooth_factor', 'smooth_factor_rsd', 'smooth_factor_cross', 'bias2') 
 
         params = Parameters()
         params.add('bias', value=defaults['bias'], min=0, vary='bias' in free_params)
         params.add('smooth_factor', value=defaults['smooth_factor'], min=0, vary='smooth_factor' in free_params)
         params.add('smooth_factor_rsd', value=defaults['smooth_factor_rsd'], min=0, vary='smooth_factor_rsd' in free_params)
         params.add('smooth_factor_cross', value=defaults['smooth_factor_cross'], min=0, vary='smooth_factor_cross' in free_params)
+        params.add('bias2', value=defaults['bias2'], min=0, vary='bias2' in free_params)
 
         self.out = lmfitminimize(self.residual, params)
         return self.out
