@@ -50,7 +50,7 @@ def search_corrs(path, sort_keys=None, reverse=None):
     for nside_path in nsides_path:
         nside = nside_path.name[6:]
         for rsd_path in nside_path.iterdir():
-            rsd = True if rsd_path.name == 'rsd' else False
+            rsd = rsd_path.name
             for range_path in rsd_path.iterdir():
                 rmin = range_path.name.split('_')[0]
                 rmax = range_path.name.split('_')[1]
