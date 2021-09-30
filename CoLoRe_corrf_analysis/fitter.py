@@ -36,33 +36,35 @@ class Fitter:
         
         self.rsd    = rsd
         self.rsd2   = rsd2
+        
+        if self.rsd2 != None:
+            logger.info('Second RSD provided. Cross-correlation mode enabled')
+            self.cross = True
+        else:
+            self.cross = False
+
         self.theory = theory
 
-        if bias0 is None:
+        if bias0 is None: # pragma: no cover
             self.bias0  = theory.bias(z)
         else:
             self.bias0 = bias0
 
-        self.bias20 = bias20
-        if self.bias20 != None:
-            self.cross = True
-        else:
-            self.cross = False
-        if self.bias20==None or self.rsd2==None:
-            if self.bias20!=self.rsd2:
-                raise ValueError('bias2 and rsd should be both None or both not None!')
+        self.bias20 = bias20 
+        if (self.bias20 is None) and (self.cross): # pragma: no cover
+            self.bias20 = self.bias0
 
-        if smooth_factor0 is None:
+        if smooth_factor0 is None: # pragma: no cover
             self.smooth_factor0 = theory.smooth_factor
         else:
             self.smooth_factor0 = smooth_factor0
 
-        if smooth_factor_rsd0 is None:
+        if smooth_factor_rsd0 is None: # pragma: no cover
             self.smooth_factor_rsd0 = theory.smooth_factor_rsd
         else:
             self.smooth_factor_rsd0 = smooth_factor_rsd0
 
-        if smooth_factor_cross0 is None:
+        if smooth_factor_cross0 is None: # pragma: no cover
             self.smooth_factor_cross0 = theory.smooth_factor_cross
         else:
             self.smooth_factor_cross0 = smooth_factor_cross0
@@ -186,7 +188,7 @@ class Fitter:
         self.out = lmfitminimize(self.residual, params)
         return self.out
 
-    def pars_tab(self):
+    def pars_tab(self): # pragma: no cover
         '''Get a tabulate table with the results of the fit.'''
         headers = ['name', 'value', 'stderr', 'stderror(%)', 'init value', 'min', 'max', 'vary']
 
@@ -213,7 +215,7 @@ class Fitter:
 
         return tabulate(rows, headers=headers, tablefmt='github', numalign='decimal', stralign='left')
 
-    def corrs_tab(self):
+    def corrs_tab(self): # pragma: no cover
         '''Get a tabulate table with the correlations within parameters of the fit.'''
         headers = ['name', 'name', 'corr']
         rows = []
@@ -233,7 +235,3 @@ class Fitter:
                 rows.append([_vars[i], _vars[j], None])
         
         return tabulate(rows, headers=headers, tablefmt='github', numalign='decimal', stralign='left')
-       
-    def nu(self):
-        nu_ = len(self.data)
-        return nu_
