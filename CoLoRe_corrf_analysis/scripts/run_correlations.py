@@ -36,6 +36,11 @@ def main():
         required=True, 
         help='Input glob pattern to randoms files')
 
+    parser.add_argument("--randoms2",
+        type=str,
+        required=False,
+        help='Input glob patterns to randoms2 files')
+
     parser.add_argument("--out-dir",
         type=str,
         required=True,
@@ -124,15 +129,22 @@ def main():
 
     logger.debug("\n".join([f'{key}:\t{args.__dict__[key]}' for key in args.__dict__.keys()]))
 
+    if (args.randoms2!=None) and (args.data2==None):
+        raise ValueError('If two randoms are provided, two datasets are required.')
+
     datacat = sorted(glob.glob(args.data))
     if args.data2 != None:
         datacat2 = sorted(glob.glob(args.data2))
+        if args.randoms2 != None:
+            randcat2 = sorted(glob.glob(args.randoms2))
     randcat = sorted(glob.glob(args.randoms))
     
 
     logger.debug('Data files:{}'.format("\n\t".join(datacat)))
     if args.data2 != None:
         logger.debug('Data2 files:{}'.format("\n\t".join(datacat2)))
+        if args.randoms2 != None:
+            logger.debug('Randoms2 files:{}'.format("\n\t".join(randcat2)))
     logger.debug('Random files:{}'.format("\n\t".join(randcat)))
 
     z=np.arange(args.zmin_covd,args.zmax_covd,args.zstep_covd)
@@ -146,9 +158,10 @@ def main():
 
     info_file = Path(args.out_dir + '/README')
     if args.data2 != None:
-        info_file.write_text(
-        "\n".join(f"{i}\n\t{datacat[i]}\n\t{randcat[i]}\n\t{datacat2[i]}\n" for i in range(len(datacat)))
-        )
+        if args.randoms2 != None:
+            info_file.write_text("\n".join(f"{i}\n\t{datacat[i]}\n\t{randcat[i]}\n\t{datacat2[i]}\n\t{randcat2[i]}\n" for i in range(len(datacat))))
+        else:
+            info_file.write_text("\n".join(f"{i}\n\t{datacat[i]}\n\t{randcat[i]}\n\t{datacat2[i]}\n" for i in range(len(datacat))))
     else:
         info_file.write_text(
         "\n".join(f"{i}\n\t{datacat[i]}\n\t{randcat[i]}\n" for i in range(len(datacat)))
@@ -156,7 +169,10 @@ def main():
 
     for imock in range(len(datacat)):
         if args.data2 != None:
-            logger.info(f'Reading file:\n\t{datacat[imock]}\n\t{datacat2[imock]}\n\t{randcat[imock]}') 
+            if args.randoms2 != None:
+                logger.info(f'Reading file:\n\t{datacat[imock]}\n\t{datacat2[imock]}\n\t{randcat[imock]}\n\t{randcat2[imock]}') 
+            else:
+                logger.info(f'Reading file:\n\t{datacat[imock]}\n\t{datacat2[imock]}\n\t{randcat[imock]}') 
         else:
             logger.info(f'Reading file:\n\t{datacat[imock]}\n\t{randcat[imock]}') 
         real_fits=fits.open(datacat[imock])

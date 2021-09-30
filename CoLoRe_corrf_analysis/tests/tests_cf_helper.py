@@ -1,6 +1,6 @@
 """
     Tests for read_theory_to_xi. Run it using:
-        coverage run --source . -m unittest discover tests
+        coverage run --source . -m unittest discover CoLoRe_corrf_analysis/tests
         python -m coverage html --omit="*/tests*","*__init__.py","*hidden_*","setup.py"
 """
 
@@ -8,7 +8,7 @@ import os
 import unittest
 from unittest import skipIf
 from pathlib import Path
-from cf_helper import CFComputations
+from CoLoRe_corrf_analysis.cf_helper import CFComputations
 import numpy as np
 import shutil
 from unittest.mock import PropertyMock, patch
@@ -30,14 +30,14 @@ class TestReadFiles(unittest.TestCase):
     def test_file_copied(self):
         assert (self.test_files / 'npole_0.dat').is_file()
 
-    @patch('cf_helper.CFComputations.halotools_like_cf')
+    @patch('CoLoRe_corrf_analysis.cf_helper.CFComputations.halotools_like_cf')
     def test_read_monopole(self, mock_func):
         pole_0 = self.cfccomp.compute_npole(0)
         target = np.loadtxt(self.test_files / 'npole_files' / 'npole_0.dat')
         np.testing.assert_equal(pole_0, target)
         assert not mock_func.called
 
-    @patch('cf_helper.CFComputations.halotools_like_cf')
+    @patch('CoLoRe_corrf_analysis.cf_helper.CFComputations.halotools_like_cf')
     def test_read_quadrupole(self, mock_func):
         pole_2 = self.cfccomp.compute_npole(2)
         target = np.loadtxt(self.test_files / 'npole_files' / 'npole_2.dat')
@@ -62,7 +62,7 @@ class TestComputeFiles(unittest.TestCase):
     def test_read_monopole(self):
         cf = self.cfccomp.halotools_like_cf
 
-        with patch('cf_helper.CFComputations.halotools_like_cf', new_callable=PropertyMock) as mocked_cf:
+        with patch('CoLoRe_corrf_analysis.cf_helper.CFComputations.halotools_like_cf', new_callable=PropertyMock) as mocked_cf:
             mocked_cf.return_value = cf
             pole_0 = self.cfccomp.compute_npole(0)
             assert mocked_cf.called
@@ -73,7 +73,7 @@ class TestComputeFiles(unittest.TestCase):
     def test_read_quadrupole(self):
         cf = self.cfccomp.halotools_like_cf
 
-        with patch('cf_helper.CFComputations.halotools_like_cf', new_callable=PropertyMock) as mocked_cf:
+        with patch('CoLoRe_corrf_analysis.cf_helper.CFComputations.halotools_like_cf', new_callable=PropertyMock) as mocked_cf:
             mocked_cf.return_value = cf
             pole_2 = self.cfccomp.compute_npole(2)
             assert mocked_cf.called

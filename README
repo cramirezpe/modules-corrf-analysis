@@ -4,8 +4,5 @@ The requirements can be installed by simply:
 pip install -r requirements.txt
 
 
-In order to run the test suite, unittest will be needed:
-pip install unittest
-
 The test suite can be run through:
-python -m unittest discover tests
+python -m unittest discover CoLoRe_corrf_analysis/tests/

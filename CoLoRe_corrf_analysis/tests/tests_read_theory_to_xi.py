@@ -1,6 +1,6 @@
 """
     Tests for read_theory_to_xi. Run it using:
-        coverage run --source . -m unittest discover tests
+        coverage run --source . -m unittest discover CoLoRe_corrf_analysis/tests
         python -m coverage html --omit="*/tests*","*__init__.py","*hidden_*","setup.py"
 """
 
@@ -8,7 +8,7 @@ import os
 import unittest
 from unittest import skipIf
 from pathlib import Path
-from read_theory_to_xi import ComputeModelsCoLoRe
+from CoLoRe_corrf_analysis.read_colore import ComputeModelsCoLoRe
 import numpy as np
 
 
