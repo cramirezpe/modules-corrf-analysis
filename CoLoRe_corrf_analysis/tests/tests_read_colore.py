@@ -175,6 +175,9 @@ class TestComputeModelsCoLoRe(unittest.TestCase):
     def tearDown(self):
         pass
 
+    def test_k(self):
+        np.testing.assert_almost_equal(self.theory.k[:5], [0.0001, 0.000102, 0.0001041, 0.0001062, 0.0001083])
+
     def test_read_pk(self):
         mean = np.mean(self.theory.input_pk)
         std = np.std(self.theory.input_pk)
