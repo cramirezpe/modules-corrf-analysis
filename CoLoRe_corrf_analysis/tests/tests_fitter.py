@@ -52,7 +52,7 @@ class TestAuto(unittest.TestCase):
         values = [params['bias'].value, params['bias'].stderr, params['smooth_factor'].value, params['bias'].vary, params['smooth_factor_rsd'].vary, params['smooth_factor'].vary]
         target = [ 1.0948031,  0.0530377, 38.7995783, True, False, True]
 
-        np.testing.assert_almost_equal(values, target)
+        np.testing.assert_almost_equal(values, target, decimal=3)
 
 @skipUnless('RUN_FITTER_TESTS' in os.environ, 'Only run when activated in environment')
 class TestCross(unittest.TestCase):
@@ -93,4 +93,4 @@ class TestCross(unittest.TestCase):
         values = [params['bias'].value, params['bias'].stderr, params['bias2'].value, params['bias'].vary, params['smooth_factor_rsd'].vary, params['bias2'].vary]
         target = [0.0101518, 0.0088402, 0.8899939, True, False, True]
 
-        np.testing.assert_almost_equal(values, target)
+        np.testing.assert_almost_equal(values, target, decimal=3)
