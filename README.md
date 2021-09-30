@@ -20,3 +20,8 @@ The test suite can be run by:
 ```
 python -m unittest discover CoLoRe_corrf_analysis/tests/
 ```
+
+Fitter tests are skipped by default, to run them:
+```
+RUN_FITTER_TESTS=Y python -m unittest discover CoLoRe_corrf_analysis/tests
+```
