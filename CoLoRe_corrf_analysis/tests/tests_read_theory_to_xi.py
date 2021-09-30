@@ -15,10 +15,11 @@ import numpy as np
 @skipIf('FAST_TEST' in os.environ, 'Skipping secondary functions')
 class TestCommon(unittest.TestCase):
     def setUp(self):
-        self.sim_path = Path("/global/cscratch1/sd/damonge/CoLoRe_sims/sim1000")
-        self.bias_filename = Path('/global/u2/c/cramirez/Codes/CoLoRe/CoLoRe_LyA_v3/examples/LSST/BzBlue.txt')
-        self.nz_filename = Path('/global/u2/c/cramirez/Codes/CoLoRe/CoLoRe_LyA_v3/examples/LSST/NzBlue.txt')
-        self.pk_filename = Path('/global/u2/c/cramirez/Codes/CoLoRe/CoLoRe_LyA_v3/examples/simple/Pk_CAMB_test.dat')
+        _current_dir = Path(__file__).parent
+        self.sim_path = _current_dir / 'test_files' / 'colore_box'
+        self.bias_filename = self.sim_path / 'bias.txt'
+        self.nz_filename = self.sim_path / 'nz.txt'
+        self.pk_filename = self.sim_path / 'pk.txt'
 
         self.theory = ComputeModelsCoLoRe(self.sim_path,
             source=2,
@@ -52,13 +53,13 @@ class TestCommon(unittest.TestCase):
         np.testing.assert_almost_equal(hist, value)
 
     def test_get_nz_histogram_from_CoLoRe_box(self):
-        hist = self.theory.get_nz_histogram_from_CoLoRe_box(np.linspace(0.6,0.8,10), rsd=False)
-        values = np.asarray([4.619804  , 4.79760715, 4.88211416, 4.9855852 , 5.05555574, 5.06905524, 5.16379215, 5.22820073, 5.19828564])
+        hist = self.theory.get_nz_histogram_from_CoLoRe_box(np.linspace(1.38,1.41,10), rsd=False)
+        values = np.asarray([ 33.3333333,  55.5555556,  33.3333333, 100.       ,  44.4444444, 33.3333333, 0, 0, 0])
         np.testing.assert_almost_equal(hist, values)
 
-        hist = self.theory.get_nz_histogram_from_CoLoRe_box(np.linspace(0.6,0.8,10), rsd=True)
-        values = np.asarray([4.60962804, 4.80880161, 4.87342244, 4.97886478, 5.05726929,
-       5.03794825, 5.15734554, 5.25790419, 5.21881586])
+        hist = self.theory.get_nz_histogram_from_CoLoRe_box(np.linspace(1.38,1.41,10), rsd=True)
+        values = np.asarray([32.1428571, 53.5714286, 75.       , 64.2857143, 64.2857143,
+       10.7142857, 0, 0, 0])
         np.testing.assert_almost_equal(hist, values)
 
     def test_get_zeff(self):
@@ -66,12 +67,12 @@ class TestCommon(unittest.TestCase):
         self.assertAlmostEqual(zeff, 0.550096831361585)
 
     def test_get_zeff_2(self):
-        zeff = self.theory.get_zeff(zmin=0.5, zmax=0.6, method='CoLoRe', rsd=False)
-        self.assertAlmostEqual(zeff,  0.5533117963181481)
+        zeff = self.theory.get_zeff(zmin=1.38, zmax=1.41, method='CoLoRe', rsd=False)
+        self.assertAlmostEqual(zeff,  1.3904252199413487)
 
     def test_get_zeff_3(self):
-        zeff = self.theory.get_zeff(zmin=0.5, zmax=0.6, method='CoLoRe', rsd=True)
-        self.assertAlmostEqual(zeff, 0.5533579649219648)
+        zeff = self.theory.get_zeff(zmin=1.38, zmax=1.41, method='CoLoRe', rsd=True)
+        self.assertAlmostEqual(zeff, 1.3892245989304808)
 
     def test_z_bins_from_files(self):
         values = np.asarray([0. , 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1. , 1.1, 1.2, 1.3])
@@ -98,10 +99,11 @@ class TestCommon(unittest.TestCase):
    
 class TestComputeModelsCoLoRe(unittest.TestCase):
     def setUp(self):
-        self.sim_path = Path("/global/cscratch1/sd/damonge/CoLoRe_sims/sim1000")
-        self.bias_filename = Path('/global/u2/c/cramirez/Codes/CoLoRe/CoLoRe_LyA_v3/examples/LSST/BzBlue.txt')
-        self.nz_filename = Path('/global/u2/c/cramirez/Codes/CoLoRe/CoLoRe_LyA_v3/examples/LSST/NzBlue.txt')
-        self.pk_filename = Path('/global/u2/c/cramirez/Codes/CoLoRe/CoLoRe_LyA_v3/examples/simple/Pk_CAMB_test.dat')
+        _current_dir = Path(__file__).parent
+        self.sim_path = _current_dir / 'test_files' / 'colore_box'
+        self.bias_filename = self.sim_path / 'bias.txt'
+        self.nz_filename = self.sim_path / 'nz.txt'
+        self.pk_filename = self.sim_path / 'pk.txt'
 
         self.theory = ComputeModelsCoLoRe(self.sim_path,
             source=2,
@@ -306,35 +308,40 @@ class TestComputeModelsCoLoRe(unittest.TestCase):
 
 class TestLyaBox(unittest.TestCase):
     def setUp(self):
-        self.sim_path = Path("/global/project/projectdirs/desi/users/cramirez/lya_mock_2LPT_runs/CoLoRe/CoLoRe_lognormal/CoLoRe_seed0_4096")
+        _current_dir = Path(__file__).parent
+        self.sim_path = _current_dir / 'test_files' / 'lyacolore_box'
+        self.bias_filename = self.sim_path / 'bias.txt'
+        self.nz_filename = self.sim_path / 'nz.txt'
+        self.pk_filename = self.sim_path / 'pk.txt'
 
         self.theory = ComputeModelsCoLoRe(self.sim_path,
             source=1,
+            bias_filename=self.bias_filename,
+            pk_filename=self.pk_filename,
+            nz_filename=self.nz_filename,
             smooth_factor=0.9,
             smooth_factor_cross=0.9,
             smooth_factor_rsd=0.9,
             smooth_factor_analysis=0,
             apply_lognormal=True)
 
-        self.master_file = Path('/global/project/projectdirs/desi/users/cramirez/lya_mock_2LPT_11_runs/LyaCoLoRe/LyaCoLoRe_lognormal/LyaCoLoRe_seed0_4096/master.fits')
+        self.master_file = self.sim_path / 'master.fits'
     
     def tearDown(self):
         pass
 
     def test_get_nz_from_master(self):
         value = self.theory.get_nz_histogram_from_master_file(self.master_file, bins=np.linspace(2.2, 2.4, 8), rsd=True)
-        target = np.array([5.49711132, 5.34705626, 5.17662751, 5.01765572, 4.85396635,
-       4.65546546, 4.45211739])
+        target = np.array([5.0954654, 4.6778043, 3.8842482, 4.8866348, 5.3460621, 5.7637232, 5.3460621])
         np.testing.assert_almost_equal(value, target)
 
         value = self.theory.get_nz_histogram_from_master_file(self.master_file, bins=np.linspace(2.2, 2.4, 8), rsd=False)
-        target = np.array([5.48844434, 5.34888828, 5.18037364, 5.01554038, 4.84591095,
-       4.66256701, 4.4582754 ])
+        target = np.array([5.2021403, 4.7859691, 4.1200951, 4.9108205, 5.3269917, 5.3686088, 5.2853746])
         np.testing.assert_almost_equal(value, target)
 
     def test_get_zeff(self):
         value = self.theory.get_zeff(zmin=2.1, zmax=2.4, method='master_file', master_file=self.master_file)
-        target = 2.234216481167806
+        target = 2.233852727789108
         np.testing.assert_almost_equal(value, target)
 
     def test_logarithmic_growth_rate(self):
@@ -349,10 +356,10 @@ class TestLyaBox(unittest.TestCase):
         pk = self.theory.combine_z_npoles(0, [2.3, 2.4, 2.8], rsd=False, mode='pk', method='master_file', master_file=self.master_file)
         mean = np.mean(pk)
         std = np.std(pk)
-        np.testing.assert_almost_equal([mean, std], [15169.6173497, 19804.6338665])
+        np.testing.assert_almost_equal([mean, std], [15203.0492363, 19841.0608076])
 
     def test_combine_z_npoles_xi(self):
         xi = self.theory.combine_z_npoles(0, [2.3, 2.4, 2.8], rsd=False, mode='xi', method='master_file', master_file=self.master_file)
         mean = np.mean(xi)
         std = np.std(xi)
-        np.testing.assert_almost_equal([mean, std], [10.4406976, 9.692203])
+        np.testing.assert_almost_equal([mean, std], [10.4900322,  9.7391197])
