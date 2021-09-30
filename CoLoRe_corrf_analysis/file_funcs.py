@@ -8,7 +8,7 @@ from tabulate import tabulate
 class FileFuncs:
     @staticmethod
     def get_full_path(basedir, rsd=True, rmin=0.1, rmax=200, zmin=0.7, zmax=0.9, nside=2, N_bins=41, rsd2=None):
-        '''Method to get the full path of a auto and cross correlation already existing.
+        '''Method to get the full path of a auto or cross correlation already existing.
         
         Args:
             rsd (bool, optional): Whether to use RSD or not. (Default: True).
@@ -55,7 +55,7 @@ class FileFuncs:
         return available_pixels
 
     @classmethod
-    def mix_sims(cls, path, boxes=None, pixels=None, data_rand_ratio=1, cross_correlation=False):
+    def mix_sims(cls, path, boxes=None, pixels=None, data_rand_ratio=1):
         '''Method to create a CFComputations object for each of the available pixels in one or more boxes.
         
         Args:
@@ -63,7 +63,6 @@ class FileFuncs:
             boxes (array, optional): Array of the boxes we want to include. (Default: All boxes available).
             pixels (array, optional): Array of pixels we want to include. (Default: All available pixels).
             data_rand_ratio (float, optional): Ratio data/randoms. (Default: 1).
-            cross_correlation (bool, optional): Whether we are working with a cross-correlation. Needed to read RD correctly. (Default: False). 
 
         Returns:
             1D array of CFComputations objects. 
@@ -80,7 +79,7 @@ class FileFuncs:
 
         output = []
         for _boxpath in paths:
-            output.append( CFComputations(_boxpath, N_data_rand_ratio=data_rand_ratio, cross_correlation=cross_correlation) )
+            output.append( CFComputations(_boxpath, N_data_rand_ratio=data_rand_ratio) )
         return output
 
     @staticmethod

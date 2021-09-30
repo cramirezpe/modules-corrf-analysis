@@ -11,22 +11,19 @@ class CFComputations:
     'formats': ('<f8', '<f8', '<f8', '<f8', '<f8', '<f8')
     }
 
-    def __init__(self, results_path, N_data_rand_ratio, label='', cross_correlation=False):
+    def __init__(self, results_path, N_data_rand_ratio, label=''):
         '''Class to handle results from corrfunc and compute multipoles.
         
         Args:
             results_path (Path): Path to the results from corrfunc.
             N_data_rand_ratio (float): Ratio data/randoms.
             label (str, optional): Label the results object. (Default: '').
-            cross_correlation (bool, optional): Whether we are working with a cross-correlation. Needed to read RD correctly. (Default: False).
-
             '''
         self.results_path = results_path
         self.N_data = 1
         self.N_rand = 1/N_data_rand_ratio
         self.label = label
-        self.cross_correlation = cross_correlation
-        
+               
     def __str__(self): # pragma: no cover
         return self.label
 
@@ -54,9 +51,14 @@ class CFComputations:
     @property
     def RD(self):
         try:
-            return np.loadtxt(self.results_path / 'RD.dat', dtype=self.dtypes)
+            try:
+                return np.loadtxt(self.results_path / 'RD.dat', dtype=self.dtypes)
+            except OSError:
+                return np.loadtxt(self.results_path / '0_RD.dat', dtype=self.dtypes)
         except OSError:
-            return np.loadtxt(self.results_path / '0_RD.dat', dtype=self.dtypes)
+            np.savetxt(self.results_path / 'RD.dat', self.DR)
+            np.savetxt(self.results_path / '0_RD.dat', self.DR)
+            return self.RD
 
     @property
     def savg(self):
@@ -75,14 +77,9 @@ class CFComputations:
         
     @cached_property
     def cf(self):
-        if self.cross_correlation:
-            self.cf = convert_3d_counts_to_cf(self.N_data, self.N_data, self.N_rand, self.N_rand, 
+        return convert_3d_counts_to_cf(self.N_data, self.N_data, self.N_rand, self.N_rand, 
                                           self.DD, self.DR, self.RD, self.RR)
-        else:
-            self.cf = convert_3d_counts_to_cf(self.N_data, self.N_data, self.N_rand, self.N_rand, 
-                                          self.DD, self.DR, self.DR, self.RR)
-        return self.cf
-        
+
     @cached_property
     def halotools_like_cf(self):
         cf_array = []

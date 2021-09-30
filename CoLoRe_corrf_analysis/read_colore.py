@@ -37,18 +37,18 @@ class ReadCoLoRe:
 
         self.param_cfg_filename = param_cfg_filename
 
-        if bias_filename is None:
+        if bias_filename is None: # pragma: no cover
             try:
                 self.bias_filename = self.param_cfg[f'srcs{self.source}']['bias_filename']
-            except Exception: # pragma: no cover
+            except Exception: 
                 print('Failed reading bias from param.cfg')
         else:
             self.bias_filename = bias_filename
 
-        if nz_filename is None:
+        if nz_filename is None: # pragma: no cover
             try:
                 self.nz_filename = self.param_cfg[f'srcs{self.source}']['nz_filename']
-            except Exception: # pragma: no cover
+            except Exception: 
                 print('Failed reading nz from param.cfg')
         else:
             self.nz_filename = nz_filename
@@ -407,10 +407,10 @@ class ComputeModelsCoLoRe(ReadCoLoRe):
             apply_lognormal (bool, optional): Whether to use lognormalized fields (where it applies). (Default: True).
         '''
         
-        if pk_filename is None:
+        if pk_filename is None: # pragma: no cover
             try:
                 self.pk_filename = self.param_cfg['global']['pk_filename']
-            except Exception: # pragma: no cover
+            except Exception:
                 logger.warning('Failed reading pk filename from param.cfg')
         else:
             self.pk_filename = pk_filename
