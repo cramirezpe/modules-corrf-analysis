@@ -1,0 +1,46 @@
+verson 0.12
+DEBUG:__main__:main:data:	/global/cscratch1/sd/cramirez/NBodyKit/multibias/s1/catalogues/1000/rsd.fits
+data2:	/global/cscratch1/sd/cramirez/NBodyKit/multibias/s5/catalogues/1000/norsd.fits
+randoms:	/global/cscratch1/sd/cramirez/NBodyKit/multibias/s1/catalogues/1000/rsd_rand.fits
+out_dir:	/global/cscratch1/sd/cramirez/NBodyKit/cross_correlations/multibias/s1_s5/nside_2/rsd_norsd/0.1_200_41/0.5_0.7/1000//2
+nthreads:	64
+mu_max:	1.0
+nmu_bins:	100
+min_bin:	0.1
+max_bin:	200.0
+n_bins:	41
+norsd:	False
+zmin:	0.5
+zmax:	0.7
+drq_format:	True
+zmin_covd:	0.01
+zmax_covd:	1.5
+zstep_covd:	0.005
+random_downsampling:	1
+pixel_mask:	[2]
+nside:	2
+log_level:	DEBUG
+DEBUG:__main__:main:Data files:/global/cscratch1/sd/cramirez/NBodyKit/multibias/s1/catalogues/1000/rsd.fits
+DEBUG:__main__:main:Data2 files:/global/cscratch1/sd/cramirez/NBodyKit/multibias/s5/catalogues/1000/norsd.fits
+DEBUG:__main__:main:Random files:/global/cscratch1/sd/cramirez/NBodyKit/multibias/s1/catalogues/1000/rsd_rand.fits
+INFO:__main__:main:Reading file:
+	/global/cscratch1/sd/cramirez/NBodyKit/multibias/s1/catalogues/1000/rsd.fits
+	/global/cscratch1/sd/cramirez/NBodyKit/multibias/s5/catalogues/1000/norsd.fits
+	/global/cscratch1/sd/cramirez/NBodyKit/multibias/s1/catalogues/1000/rsd_rand.fits
+DEBUG:__main__:main:Length of data cat: 428899029
+DEBUG:__main__:main:Length of rand cat: 428899029
+INFO:__main__:main:Reading second data cat
+DEBUG:__main__:main:Length of data2 cat: 428891516
+DEBUG:__main__:main:Applying pixel mask
+DEBUG:__main__:main:Length of data after pixel mask: 8932310
+DEBUG:__main__:main:Length of rand after pixel mask: 8933876
+DEBUG:__main__:main:Length of data2 after pixel mask: 8969068
+DEBUG:__main__:main:Length of data after z mask: 2148674
+DEBUG:__main__:main:Length of rand after z mask: 2154292
+DEBUG:__main__:main:Length of data2 after z mask: 2160933
+INFO:__main__:main:Starting computation for current file:
+INFO:__main__:main:Computing DD...
+INFO:__main__:main:Computing DR...
+INFO:__main__:main:Computing RR...
+INFO:__main__:main:Computing RD...
+DEBUG:__main__:main:Relative ellapsed time: 847.6280825138092

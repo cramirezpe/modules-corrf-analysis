@@ -16,7 +16,7 @@ from unittest.mock import PropertyMock, patch
 class TestReadFiles(unittest.TestCase):
     def setUp(self):
         _current_dir = Path(__file__).parent
-        self.test_files = _current_dir / 'test_files' / 'cf_helper'
+        self.test_files = _current_dir / 'test_files' / 'cf_helper' / '0'
         for _npole_file in (self.test_files / 'npole_files').glob('npole*'):
             shutil.copy(_npole_file, self.test_files)
 
@@ -52,7 +52,7 @@ class TestReadFiles(unittest.TestCase):
 class TestComputeFiles(unittest.TestCase):
     def setUp(self):
         _current_dir = Path(__file__).parent
-        self.test_files = _current_dir / 'test_files' / 'cf_helper'
+        self.test_files = _current_dir / 'test_files' / 'cf_helper' / '0'
         for _npole_file in (self.test_files).glob('npole_*'):
             if _npole_file.is_file():
                 os.remove(_npole_file.resolve())
@@ -89,7 +89,7 @@ class TestComputeFiles(unittest.TestCase):
 class TestComputeFilesCross(unittest.TestCase):
     def setUp(self):
         _current_dir = Path(__file__).parent
-        self.test_files = _current_dir / 'test_files' / 'cf_helper_cross'
+        self.test_files = _current_dir / 'test_files' / 'cf_helper_cross' / '0'
         for _npole_file in (self.test_files).glob('npole_*'):
             if _npole_file.is_file():
                 os.remove(_npole_file.resolve())

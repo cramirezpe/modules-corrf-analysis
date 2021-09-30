@@ -1,0 +1,10 @@
+............80%...........60%....50%......40%......................0% Time taken =   0.220 sec
+ Time taken =   0.163 sec
+countpairs_mocks_s_mu_double> gridlink seems inefficient. nmesh = (9, 9, 4); avg_np = 6.65e+03. Boosting bin refine factor - should lead to better performance
+In gridlink_mocks_double> Running with [nmesh_x, nmesh_y, nmesh_z]  = 9,9,4. In gridlink_mocks_double> Running with [nmesh_x, nmesh_y, nmesh_z]  = 13,13,4. ..10%....20%.....30%...............70%.....90%....100% done. Time taken =     2 mins
+100% done. Time taken =     3 mins   59 secs
+....90%....80%.......50%......................10%.....0% Time taken =   0.164 sec
+In gridlink_mocks_double> Running with [nmesh_x, nmesh_y, nmesh_z]  = 9,9,4.  Time taken =   0.166 sec
+countpairs_mocks_s_mu_double> gridlink seems inefficient. nmesh = (9, 9, 4); avg_np = 6.65e+03. Boosting bin refine factor - should lead to better performance
+In gridlink_mocks_double> Running with [nmesh_x, nmesh_y, nmesh_z]  = 13,13,4.  Time taken =   0.224 sec
+In gridlink_mocks_double> Running with [nmesh_x, nmesh_y, nmesh_z]  = 13,13,4. .........20%....30%...40%........60%.........70%...............
