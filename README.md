@@ -11,5 +11,7 @@ make install
 python -m pip install .
 ```
 
-The test suite can be run through:
+The test suite can be run by:
+```
 python -m unittest discover CoLoRe_corrf_analysis/tests/
+```
