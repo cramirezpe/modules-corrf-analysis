@@ -55,7 +55,7 @@ class CFComputations:
                 return np.loadtxt(self.results_path / 'RD.dat', dtype=self.dtypes)
             except OSError:
                 return np.loadtxt(self.results_path / '0_RD.dat', dtype=self.dtypes)
-        except OSError:
+        except OSError:  # pragma: no cover
             np.savetxt(self.results_path / 'RD.dat', self.DR)
             np.savetxt(self.results_path / '0_RD.dat', self.DR)
             return self.RD

@@ -44,6 +44,11 @@ class TestReadFiles(unittest.TestCase):
         np.testing.assert_equal(pole_2, target)
         assert not mock_func.called
 
+    def test_read_savg(self):
+        savg = self.cfccomp.savg
+
+        np.testing.assert_equal(savg, np.unique(( self.cfccomp.DD['smin'] + self.cfccomp.DD['smax'] ))/2)
+
 class TestComputeFiles(unittest.TestCase):
     def setUp(self):
         _current_dir = Path(__file__).parent
