@@ -4,11 +4,9 @@ from pathlib import Path
 
 import astropy
 from astropy.io import fits
-import camb
 import libconf
 import numpy as np
 from astropy import cosmology
-from camb import initialpower, model
 from scipy.interpolate import InterpolatedUnivariateSpline, interp1d
 from mcfit import xi2P, P2xi
 
