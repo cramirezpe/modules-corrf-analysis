@@ -22,40 +22,54 @@ logger = logging.getLogger(__name__)
 def getArgs(): # pragma: no cover
     parser = argparse.ArgumentParser()
     parser.add_argument("--data",       
-        type=str,   
+        nargs='+',
+        type=str, 
         required=True, 
-        help='Input glob pattern to data files')
+        help='Input data files')
 
     parser.add_argument("--data-format",
         type=str,
-        choices=['CoLoRe', 'zcat'])
+        choices=['CoLoRe', 'zcat'],
+        default='zcat')
 
     parser.add_argument("--data-norsd",
         action='store_true',
         help='If CoLoRe format selected: read noRSD redshifts for data')
 
     parser.add_argument("--data2",
-        type=str,
+        nargs='+',
+        type=str, 
         required=False,
-        help='Input glob patterns to data2 files')
+        help='Input data2 files')
 
     parser.add_argument("--data2-format",
         type=str,
-        choices=['CoLoRe', 'zcat'])
+        choices=['CoLoRe', 'zcat'],
+        default='zcat')
 
     parser.add_argument("--data2-norsd",
         action='store_true',
         help='If CoLoRe format selected: read noRSD redshifts for data2')
     
     parser.add_argument("--randoms",    
-        type=str,   
-        required=True, 
-        help='Input glob pattern to randoms files')
+        nargs='+',
+        type=str, 
+        required=False, 
+        help='Input random files. If not provided they will be generated')
 
     parser.add_argument("--randoms2",
+        nargs='+',
         type=str,
         required=False,
-        help='Input glob patterns to randoms2 files')
+        help='Input randoms2 files')
+
+    parser.add_argument("--generate-randoms2",
+        action='store_true',
+        help='Generate randoms2. Default: (Use the ones form randoms1)')
+
+    parser.add_argument("--store-generated-rands",
+        action='store_true',
+        help='Store generated randoms in the output dir')
 
     parser.add_argument("--out-dir",
         type=str,
@@ -131,8 +145,8 @@ def getArgs(): # pragma: no cover
     return args
 
 class FieldData:
-    def __init__(self, path, label, file_type, rsd=False):
-        self.path   = path
+    def __init__(self, cat, label, file_type, rsd=False):
+        self.cat   = cat
         self.label  = label
         self.file_type = file_type
         if file_type == 'zcat':
@@ -150,18 +164,18 @@ class FieldData:
         elif self.file_type == 'CoLoRe':
             return 'Z_COSMO'
 
-    def get_cats(self):
-        self.cat = sorted(glob.glob(self.path))
-
     def open_fits(self, imock):
         self.fits = fits.open(self.cat[imock])
 
-    def define_data(self):
+    def define_data_from_fits(self):
         _cat_length = 0
         for i in range(len(self.cat)):
             self.open_fits(i)
             _cat_length += len(self.fits[1].data)
         self.data = np.empty(_cat_length,dtype=[('RA','f8'),('DEC','f8'),('Z','f8'),('Weight','f8')])
+
+    def define_data_from_size(self, N):
+        self.data = np.empty(N,dtype=[('RA','f8'),('DEC','f8'),('Z','f8'),('Weight','f8')])
 
     def fill_data(self):
         ''' Fill the data arrays from the input source.
@@ -197,6 +211,52 @@ class FieldData:
     def compute_cov(self, interpolator):
         self.cov = interpolator(self.data['Z'])
 
+    def store_data_in_cat(self, filename):
+        logger.debug(f'Writting catalogue {self.label} into {filename}')
+        values = (self.data['RA'], self.data['DEC'], self.data['Z'])
+        labels = ('RA', 'DEC', 'Z')
+        dtypes = ('D', 'D', 'D')
+
+        cols = []
+        for value, label, dtype in zip(values, labels, dtypes):
+            cols.append(fits.Column(name=label, format=dtype, array=value))
+
+        logger.debug('Defining FITS headers')
+        p_hdr = fits.Header()
+        t_hdr = fits.Header()
+
+        logger.debug('Defining hdulist')
+        hdulist = fits.HDUList()
+
+        hdulist.append(fits.PrimaryHDU(header=p_hdr))
+        hdulist.append(fits.BinTableHDU.from_columns(cols, header=t_hdr))
+
+        try:
+            hdulist.writeto(filename, overwrite=False)
+        except OSError:
+            logger.warning('Unable to write catalog to filename path.')
+        
+        hdulist.close() 
+
+    def prepare_data(self, zmin, zmax, downsampling, pixel_mask, nside):
+        logger.info('\nReading files: ', self.cat)
+        self.define_data_from_fits()
+        self.fill_data()
+        logger.debug(f'Length of {self.label} cat: {len(self.data)}')
+
+        if downsampling != 1:
+            logger.debug(f'Applying downsampling: {downsampling}')
+            self.apply_downsampling(downsampling)
+            logger.debug(f'Length of {self.label} after downsampling: {len(self.data)}')
+
+        self.apply_redshift_mask(zmin, zmax)
+        logger.debug(f'Length of {self.label} after redshift mask: {len(self.data)}')
+
+        if pixel_mask != None:
+            logger.debug(f'Applying pixel mask')
+            self.apply_pixel_mask(pixel_mask, nside)
+            logger.debug(f'Length of {self.label} after pixel mask: {len(self.data)}')
+
 def main(args=None):
     if args is None: # pragma: no cover
         args = getArgs()
@@ -214,21 +274,6 @@ def main(args=None):
     if (args.randoms2!=None) and (args.data2==None): # pragma: no cover
         raise ValueError('If two randoms are provided, two datasets are required.')
 
-    data = FieldData(args.data, 'Data', file_type=args.data_format, rsd=not(args.data_norsd))
-    rand = FieldData(args.randoms, 'Randoms', file_type='zcat')
-    field_objects = [data, rand]
-
-    if args.data2 != None:
-        data2 = FieldData(args.data2, 'Data2', file_type=args.data2_format, rsd=not(args.data2_norsd))
-        field_objects.append(data2)
-        if args.randoms2 != None:
-            rand2 = FieldData(args.randoms2, 'Randoms2', file_type='zcat')
-            field_objects.append(rand2)
-
-    for obj in field_objects:
-        obj.get_cats()
-        logger.debug('{} files:{}'.format(obj.label, "\n\t".join(obj.cat)))
-
     z=np.arange(args.zmin_covd,args.zmax_covd,args.zstep_covd)
     covd=[]
     for i in range(len(z)):
@@ -238,36 +283,40 @@ def main(args=None):
 
     Path(args.out_dir).mkdir(exist_ok=True)
 
-    info_file = Path(args.out_dir + '/README')
-    text=''
-    for i in range(len(data.cat)):
-        text+="\n".join('{}\n\t{}'.format(i, "\n\t".join([obj.cat[i] for obj in field_objects])))
-    info_file.write_text(text)
+    data = FieldData(args.data, 'Data', file_type=args.data_format, rsd=not(args.data_norsd))
+    data.prepare_data(args.zmin, args.zmax, args.random_downsampling, args.pixel_mask, args.nside)
+    data.compute_cov(f)
 
-    logger.info('Reading files:\n\t{}'.format("\n\t".join([obj.cat[i] for obj in field_objects])))
-    for obj in field_objects:
-        obj.define_data()
-        obj.fill_data()
-        logger.debug(f'Length of {obj.label} cat: {len(obj.data)}')
+    rand = FieldData(args.randoms, 'Randoms', file_type='zcat')
+    if args.randoms != None:
+        rand.prepare_data(args.zmin, args.zmax, args.random_downsampling, args.pixel_mask, args.nside)
+    else:
+        rand.define_data_from_size(len(data.data))
+        generate_random_from_data(data, rand, pixel_mask=args.pixel_mask, nside=args.nside)
+        if args.store_generated_rands:
+            rand.store_data_in_cat(f'{args.out_dir} / {rand.label}.fits')
+    rand.compute_cov(f)
 
-    if args.random_downsampling != 1: # pragma: no cover
-        logger.debug(f'Applying downsampling: {args.random_downsampling}')
-        for obj in field_objects:
-            obj.apply_downsampling(args.random_downsampling)
-            logger.debug(f'Length of {obj.label} after downsampling: {len(obj.data)}')
-
-    for obj in field_objects:
-        obj.apply_redshift_mask(args.zmin, args.zmax)
-        logger.debug(f'Length of {obj.label} after redshift mask: {len(obj.data)}')
-
-    if args.pixel_mask is not None:
-        logger.debug(f'Applying pixel mask')
-        for obj in field_objects:
-            obj.apply_pixel_mask(args.pixel_mask, args.nside)
-            logger.debug(f'Length of {obj.label} after pixel mask: {len(obj.data)}')
-
-    for obj in field_objects:
-        obj.compute_cov(f)
+    if args.data2 != None:
+        data2 = FieldData(args.data2, 'Data2', file_type=args.data2_format, rsd=not(args.data2_norsd))
+        data2.prepare_data(args.zmin, args.zmax, args.random_downsampling, args.pixel_mask, args.nside)
+        data2.compute_cov(f)
+        if args.randoms2 != None:
+            rand2 = FieldData(args.randoms2, 'Randoms2', file_type='zcat')
+            rand2.prepare_data(args.zmin, args.zmax, args.random_downsampling, args.pixel_mask, args.nside)
+            rand2.compute_cov(f)
+        elif args.generate_randoms2:
+            rand2 = FieldData(args.randoms2, 'Randoms2', file_type='zcat')
+            rand2.define_data_from_size(len(data2.data))
+            generate_random_from_data(data2, rand2, pixel_mask=args.pixel_mask, nside=args.nside)
+            if args.store_generated_rands:
+                rand2.store_data_in_cat(f'{args.out_dir} / {rand2.label}.fits')
+            rand2.compute_cov(f)
+        else:
+            rand2 = rand
+    else:
+        data2 = data
+        rand2 = rand
 
     bins2p=np.linspace(args.min_bin, args.max_bin, args.n_bins)
 
@@ -275,11 +324,11 @@ def main(args=None):
     if logging.root.level <= logging.DEBUG: # pragma: no cover
         start_computation = time.time()
 
-    if args.data2 == None:
-        data2 = data
-    if args.randoms2 == None:
-        rand2 = rand
-
+    info_file = Path(args.out_dir + '/README')
+    text=''
+    for i in range(len(data.cat)):
+        text+="\n".join('{}\n\t{}'.format(i, "\n\t".join([obj.cat[i] for obj in [data, data2, rand, rand2]])))
+    info_file.write_text(text)
 
     logger.info('Computing DD...')
     DD = DDsmu_mocks(autocorr=data==data2, 
@@ -321,6 +370,77 @@ def hhz(z):
 def cov(z):
     return 2998*integrate.quad(hhz,0,z)[0]
    
+def generate_random_from_data(data, rand, pixel_mask=None, nside=None):
+    from scipy.interpolate import interp1d
+
+    logger.info('Generating random catalog from ', data.label)
+    
+    # For interpolating, having 1000 samples is enough, 
+    # but I should select them randomly
+    downsampling = 1000 / len(data.data) 
+    _mask = np.random.choice(a=[True, False], size=len(data.data), p=[downsampling, 1-downsampling])
+    
+    logger.info('Sorting redshifts')
+    z_sort = np.sort(data.data['Z'][_mask])
+    p = np.linspace(0, 1, len(z_sort), endpoint=True) #endpoint set to true will cause a biased estimator... but I chose it anyway to avoid invalid values later on.
+
+    z_gen = interp1d(p, z_sort)
+
+    NRAND = len(rand.data)
+    logger.info('Interpolating redshift')
+    ran1 = np.random.random(int(NRAND))
+    rand.data['Z'] = z_gen(ran1)
+
+    if pixel_mask == None:
+        ran1 = np.random.random(int(NRAND))
+        ran2 = np.random.random(int(NRAND))
+
+        rand.data['RA'] = np.degrees(np.pi*2*ran1)
+        rand.data['DEC']= np.degrees(np.arcsin(2.*(ran2-0.5)))
+        
+        return
+    else:
+        _lambda = NRAND / len(pixel_mask)
+        randoms_per_pixel = np.random.poisson(_lambda, len(pixel_mask))
+        if randoms_per_pixel.sum() > NRAND:
+            excess_ratio = (randoms_per_pixel.sum() - NRAND)/randoms_per_pixel.sum()
+            for i in randoms_per_pixel:
+                i -= int(i*excess_ratio)
+        elif randoms_per_pixel.sum() < NRAND:
+            deficit_ratio = (-randoms_per_pixel.sum() + NRAND)/randoms_per_pixel.sum()
+            for i in randoms_per_pixel:
+                i += int(i*deficit_ratio)
+
+        max_pixrad = hp.pixelfunc.max_pixrad(nside)
+        pix_area = hp.pixelfunc.nside2pixarea(nside, degrees=True)
+        _index=0
+        for pixel, N in zip(pixel_mask, randoms_per_pixel):
+            pixel_center = hp.pix2ang(nside=nside, ipix=pixel, lonlat=True)
+            ra_range = (pixel_center[0] - max_pixrad, pixel_center[0] + max_pixrad)
+            dec_range = (pixel_center[1] - max_pixrad, pixel_center[1] + max_pixrad)
+            range_size = (2*max_pixrad)*( np.sin(np.radians(dec_range[1])) - np.sin(np.radians(dec_range[0])) )
+
+            dec_range_rad = np.radians(dec_range)
+
+            RAs =  []
+            DECs = []
+            valid_fraction = pix_area / range_size
+            while len(RAs) <  N:
+                randoms_left = N - len(RAs)
+                ran1 = np.random.random(int(randoms_left/valid_fraction))
+                ran2 = np.random.random(int(randoms_left/valid_fraction))
+
+                new_RAs  = pixel_center[0] + 2*(ran1-0.5)*max_pixrad
+                new_DECs = np.degrees(np.arcsin( ran2/(np.sin(dec_range_rad[1])-np.sin(dec_range_rad[0])) + np.sin(dec_range_rad[0]) ))
+
+                new_pixels = hp.pixelfunc.ang2pix(nside, new_RAs, new_DECs, lonlat=True)
+                mask = new_pixels == pixel
+                RAs = np.append(RAs, new_RAs)
+                DECs = np.append(DECs, new_DECs)
+
+        rand.data['RA'][_index:_index+N] = RAs[:N]
+        rand.data['DEC'][_index:_index+N] = DECs[:N]
+        _index+=N
 
 if __name__ == '__main__': # pragma: no cover
     main()

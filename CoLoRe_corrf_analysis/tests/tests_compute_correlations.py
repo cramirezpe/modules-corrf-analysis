@@ -19,11 +19,11 @@ class TestComputeCorrelationsAuto(unittest.TestCase):
     out_dir = files_path / 'auto' / 'output'
 
     args = SimpleNamespace(
-        data=str((catalogues / 's4_rsd.fits').resolve()),
+        data=[str(i) for i in catalogues.resolve().glob('s4_rsd.fits')],
         data_norsd=False,
-        randoms=str((catalogues / 's4_rsd_rand.fits').resolve()),
+        randoms=[str(i) for i in catalogues.resolve().glob('s4_rsd_rand.fits')],
         data_format='zcat', data2_format='zcat',
-        data2=None, randoms2=None,
+        data2=None, randoms2=None, generate_randoms2=False,
         data2_norsd=False,
         out_dir=str((out_dir).resolve()),
         nthreads=8,
@@ -66,13 +66,13 @@ class TestComputeCorrelationsCross(unittest.TestCase):
     out_dir = files_path / 'cross' / 'output'
 
     args = SimpleNamespace(
-        data=str((catalogues / 's4_rsd.fits').resolve()),
+        data=[str(i) for i in catalogues.resolve().glob('s4_rsd.fits')],
         data_norsd=False,
-        randoms=str((catalogues / 's4_rsd_rand.fits').resolve()),
-        data2=str((catalogues / 's1_rsd.fits').resolve()),
+        randoms=[str(i) for i in catalogues.resolve().glob('s4_rsd_rand.fits')],
+        data2=[str(i) for i in catalogues.resolve().glob('s1_rsd.fits')],
         data2_norsd=False,
         data_format='zcat', data2_format='zcat',
-        randoms2=None,
+        randoms2=None, generate_randoms2=False,
         out_dir=str((out_dir).resolve()),
         nthreads=8,
         mu_max=1, nmu_bins=4,
@@ -109,7 +109,7 @@ class TestComputeCorrelationsCross(unittest.TestCase):
         np.testing.assert_equal((DD,DR,RR), (DD_target, DR_target, RR_target))   
 
     def test_crosscorrelation_2_randoms(self):
-        self.args.randoms2 = str((self.catalogues / 's1_rsd_rand.fits').resolve())
+        self.args.randoms2 = [str((self.catalogues / 's1_rsd_rand.fits').resolve())]
         compute_correlations.main(self.args)
 
         DD = np.loadtxt(self.out_dir.parent / 'output' / 'DD.dat')
@@ -159,13 +159,13 @@ class TestComputeCorrelationsReadCoLoRe(unittest.TestCase):
     out_dir = files_path / 'CoLoRe_read' / 'output'
 
     args = SimpleNamespace(
-        data=str((colore_box / 'out_srcs_s2*').resolve()),
+        data=[str(i) for i in colore_box.resolve().glob('out_srcs_s2*')],
         data_norsd=False,
-        randoms=str((catalogues / 's1_rsd.fits').resolve()),
-        data2=str((colore_box / 'out_srcs_s2*').resolve()),
+        randoms=[str(i) for i in catalogues.resolve().glob('s1_rsd.fits')],
+        data2=[str(i) for i in colore_box.resolve().glob('out_srcs_s2*')],
         data2_norsd=True,
         data_format='CoLoRe', data2_format='CoLoRe',
-        randoms2=None,
+        randoms2=None, generate_randoms2=False,
         out_dir=str((out_dir).resolve()),
         nthreads=8,
         mu_max=1, nmu_bins=4,
