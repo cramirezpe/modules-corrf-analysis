@@ -17,7 +17,7 @@ setuptools.setup(
     entry_points={
         'console_scripts': [
             'CoLoRe_corrf_search_sims = CoLoRe_corrf_analysis.scripts.available_sims:main',
-            'CoLoRe_corrf_run_correlations = CoLoRe_corrf_analysis.scripts.run_correlations:main',
+            'CoLoRe_corrf_run_correlations = CoLoRe_corrf_analysis.compute_correlations:main',
         ]
     },
     classifiers=[
