@@ -376,13 +376,7 @@ def cov(z):
 def generate_random_from_data(data, rand, pixel_mask=None, nside=None):
     from scipy.interpolate import interp1d
 
-    logger.info('Generating random catalog from ', data.label)
-    
-    # For interpolating, having 1000 samples is enough, 
-    # but I should select them randomly
-    downsampling = 1000 / len(data.data) 
-    _mask = np.random.choice(a=[True, False], size=len(data.data), p=[downsampling, 1-downsampling])
-    
+    logger.info(f'Generating random catalog from {data.label} to {rand.label}')  
     logger.info('Sorting redshifts')
     z_sort = np.sort(data.data['Z'][_mask])
     p = np.linspace(0, 1, len(z_sort), endpoint=True) #endpoint set to true will cause a biased estimator... but I chose it anyway to avoid invalid values later on.
