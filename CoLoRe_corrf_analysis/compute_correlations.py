@@ -212,7 +212,7 @@ class FieldData:
         self.cov = interpolator(self.data['Z'])
 
     def store_data_in_cat(self, filename):
-        logger.debug(f'Writting catalogue {self.label} into {filename}')
+        logger.info(f'Writting catalogue {self.label} into {filename}')
         values = (self.data['RA'], self.data['DEC'], self.data['Z'])
         labels = ('RA', 'DEC', 'Z')
         dtypes = ('D', 'D', 'D')
@@ -293,8 +293,9 @@ def main(args=None):
     else:
         rand.define_data_from_size(len(data.data))
         generate_random_from_data(data, rand, pixel_mask=args.pixel_mask, nside=args.nside)
+        rand.cat = []
         if args.store_generated_rands:
-            rand.store_data_in_cat(f'{args.out_dir} / {rand.label}.fits')
+            rand.store_data_in_cat(Path(args.out_dir) / (rand.label + '.fits'))
     rand.compute_cov(f)
 
     if args.data2 != None:
@@ -309,6 +310,7 @@ def main(args=None):
             rand2 = FieldData(args.randoms2, 'Randoms2', file_type='zcat')
             rand2.define_data_from_size(len(data2.data))
             generate_random_from_data(data2, rand2, pixel_mask=args.pixel_mask, nside=args.nside)
+            rand2.cat = []
             if args.store_generated_rands:
                 rand2.store_data_in_cat(f'{args.out_dir} / {rand2.label}.fits')
             rand2.compute_cov(f)
@@ -326,8 +328,9 @@ def main(args=None):
 
     info_file = Path(args.out_dir + '/README')
     text=''
-    for i in range(len(data.cat)):
-        text+="\n".join('{}\n\t{}'.format(i, "\n\t".join([obj.cat[i] for obj in [data, data2, rand, rand2]])))
+    for obj in [data, data2, rand, rand2]:
+        text+="\n{}\n\t{}".format(obj.label, "\n\t".join([cat for cat in obj.cat]))
+
     info_file.write_text(text)
 
     logger.info('Computing DD...')
@@ -391,6 +394,7 @@ def generate_random_from_data(data, rand, pixel_mask=None, nside=None):
     ran1 = np.random.random(int(NRAND))
     rand.data['Z'] = z_gen(ran1)
 
+    logger.info('Computing random positions')
     if pixel_mask == None:
         ran1 = np.random.random(int(NRAND))
         ran2 = np.random.random(int(NRAND))
@@ -402,44 +406,43 @@ def generate_random_from_data(data, rand, pixel_mask=None, nside=None):
     else:
         _lambda = NRAND / len(pixel_mask)
         randoms_per_pixel = np.random.poisson(_lambda, len(pixel_mask))
-        if randoms_per_pixel.sum() > NRAND:
-            excess_ratio = (randoms_per_pixel.sum() - NRAND)/randoms_per_pixel.sum()
-            for i in randoms_per_pixel:
-                i -= int(i*excess_ratio)
-        elif randoms_per_pixel.sum() < NRAND:
-            deficit_ratio = (-randoms_per_pixel.sum() + NRAND)/randoms_per_pixel.sum()
-            for i in randoms_per_pixel:
-                i += int(i*deficit_ratio)
+        extra_objs = randoms_per_pixel.sum() - NRAND
+        if extra_objs > 0:
+            for i in range(np.abs(extra_objs)):
+                randoms_per_pixel[np.random.randint(0, len(pixel_mask))] -= 1
+        if extra_objs < 0:
+            for i in range(np.abs(extra_objs)):
+                randoms_per_pixel[np.random.randint(0, len(pixel_mask))] += 1
 
         max_pixrad = hp.pixelfunc.max_pixrad(nside)
-        pix_area = hp.pixelfunc.nside2pixarea(nside, degrees=True)
+        pix_area = hp.pixelfunc.nside2pixarea(nside)
         _index=0
+
         for pixel, N in zip(pixel_mask, randoms_per_pixel):
-            pixel_center = hp.pix2ang(nside=nside, ipix=pixel, lonlat=True)
-            ra_range = (pixel_center[0] - max_pixrad, pixel_center[0] + max_pixrad)
-            dec_range = (pixel_center[1] - max_pixrad, pixel_center[1] + max_pixrad)
-            range_size = (2*max_pixrad)*( np.sin(np.radians(dec_range[1])) - np.sin(np.radians(dec_range[0])) )
+            logger.info(f'Computing random positions for pixel {pixel}')
+            pixel_center = hp.pix2ang(nside=nside, ipix=pixel)
+            th_range = (pixel_center[0] - max_pixrad, pixel_center[0] + max_pixrad)
+            # ph_range = (pixel_center[1] - max_pixrad, pixel_center[1] + max_pixrad)
+            range_size = np.abs((2*max_pixrad) * (np.cos(th_range[0])-np.cos(th_range[1])))
 
-            dec_range_rad = np.radians(dec_range)
-
-            RAs =  []
-            DECs = []
+            THs = []
+            PHs = []
             valid_fraction = pix_area / range_size
-            while len(RAs) <  N:
-                randoms_left = N - len(RAs)
+            while len(THs) < N:
+                randoms_left = N - len(PHs)
+                logger.debug(f'Randoms left: {randoms_left}')
                 ran1 = np.random.random(int(randoms_left/valid_fraction))
                 ran2 = np.random.random(int(randoms_left/valid_fraction))
 
-                new_RAs  = pixel_center[0] + 2*(ran1-0.5)*max_pixrad
-                new_DECs = np.degrees(np.arcsin( ran2/(np.sin(dec_range_rad[1])-np.sin(dec_range_rad[0])) + np.sin(dec_range_rad[0]) ))
-
-                new_pixels = hp.pixelfunc.ang2pix(nside, new_RAs, new_DECs, lonlat=True)
+                new_PHs = pixel_center[1] + 2*(ran1-0.5)*max_pixrad
+                new_THs = np.arccos( np.cos(th_range[0]) - ran2*( np.cos(th_range[0])-np.cos(th_range[1]) ) )
+                new_pixels = hp.pixelfunc.ang2pix(nside, new_THs, new_PHs)
                 mask = new_pixels == pixel
-                RAs = np.append(RAs, new_RAs)
-                DECs = np.append(DECs, new_DECs)
+                THs = np.append(THs, new_THs[mask])
+                PHs = np.append(PHs, new_PHs[mask])
 
-        rand.data['RA'][_index:_index+N] = RAs[:N]
-        rand.data['DEC'][_index:_index+N] = DECs[:N]
+        rand.data['RA'][_index:_index+int(N)] = np.degrees(PHs[:int(N)])
+        rand.data['DEC'][_index:_index+int(N)] = 90 - np.degrees(THs[:int(N)])
         _index+=N
 
 if __name__ == '__main__': # pragma: no cover

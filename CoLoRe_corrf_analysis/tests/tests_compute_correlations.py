@@ -1,17 +1,29 @@
+import filecmp
 import unittest
-from unittest.mock import patch
 from pathlib import Path
 from shutil import rmtree
 from types import SimpleNamespace
+from unittest.mock import patch
 
 import numpy as np
+from astropy.io import fits
 from CoLoRe_corrf_analysis import compute_correlations
+
 
 def mock_choice(a, size, p):
     _mask = [True for i in range(size)]
     for i in range(50):
         _mask[i] = False
     return _mask
+
+def mock_random_random(length):
+    return np.linspace(0, 1, length)
+
+def mock_random_poisson(_lambda, length):
+    return _lambda*np.ones(length, dtype=int)
+
+def mock_random_int(min, max):
+    return min
 
 class TestComputeCorrelationsAuto(unittest.TestCase):
     files_path = Path(__file__).parent / 'test_files' / 'correlations'
@@ -24,6 +36,7 @@ class TestComputeCorrelationsAuto(unittest.TestCase):
         randoms=[str(i) for i in catalogues.resolve().glob('s4_rsd_rand.fits')],
         data_format='zcat', data2_format='zcat',
         data2=None, randoms2=None, generate_randoms2=False,
+        store_generated_rands=True,
         data2_norsd=False,
         out_dir=str((out_dir).resolve()),
         nthreads=8,
@@ -33,7 +46,7 @@ class TestComputeCorrelationsAuto(unittest.TestCase):
         zmin=0, zmax=10,
         zmin_covd=0.8, zmax_covd=1.5, zstep_covd=0.01,
         random_downsampling=1, pixel_mask=None, nside=2,
-        log_level='WARNING'
+        log_level='DEBUG'
     ) 
 
     def setUp(self):
@@ -44,8 +57,7 @@ class TestComputeCorrelationsAuto(unittest.TestCase):
             self.out_dir.mkdir()
         
     def tearDown(self):
-        if self.out_dir.is_dir():
-            rmtree(self.out_dir)
+        return
 
     def test_autocorrelation(self):
         compute_correlations.main(self.args)
@@ -58,7 +70,37 @@ class TestComputeCorrelationsAuto(unittest.TestCase):
         DR_target = np.loadtxt(self.out_dir.parent / 'target_values' / '0_DR.dat')
         RR_target = np.loadtxt(self.out_dir.parent / 'target_values' / '0_RR.dat')
 
-        np.testing.assert_equal((DD,DR,RR), (DD_target, DR_target, RR_target))        
+        np.testing.assert_equal((DD,DR,RR), (DD_target, DR_target, RR_target))   
+
+    @patch('numpy.random.choice', side_effect=mock_choice)
+    @patch('numpy.random.poisson', side_effect=mock_random_poisson)
+    @patch('numpy.random.randint', side_effect=mock_random_int)
+    @patch('numpy.random.random', side_effect=mock_random_random)
+    def test_autocorrelation_make_randoms(self, mock_func, mock_func_2, mock_func_3, mock_func_4):
+        self.args.randoms = None
+        self.args.pixel_mask = [17]
+        compute_correlations.main(self.args)
+
+        DD = np.loadtxt(self.out_dir.parent / 'output' / 'DD.dat')
+        DR = np.loadtxt(self.out_dir.parent / 'output' / 'DR.dat')
+        RR = np.loadtxt(self.out_dir.parent / 'output' / 'RR.dat')
+
+        DD_target = np.loadtxt(self.out_dir.parent / 'target_values_rand' / 'DD.dat')
+        DR_target = np.loadtxt(self.out_dir.parent / 'target_values_rand' / 'DR.dat')
+        RR_target = np.loadtxt(self.out_dir.parent / 'target_values_rand' / 'RR.dat')
+
+        randoms = self.out_dir.parent / 'output' / 'Randoms.fits'
+        randoms_target = self.out_dir.parent / 'target_values_rand' / 'Randoms.fits'
+
+        f_randoms = fits.open(randoms)
+        z = f_randoms[1].data['Z']
+        RA = f_randoms[1].data['RA']
+        f_randoms.close()
+        f_target = fits.open(randoms_target)
+        z_targ = f_target[1].data['Z']
+        RA_targ = f_target[1].data['RA']
+        np.testing.assert_equal(z, z_targ)
+        np.testing.assert_equal(RA, RA_targ)
 
 class TestComputeCorrelationsCross(unittest.TestCase):
     files_path = Path(__file__).parent / 'test_files' / 'correlations'
