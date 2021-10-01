@@ -378,14 +378,15 @@ def generate_random_from_data(data, rand, pixel_mask=None, nside=None):
 
     logger.info(f'Generating random catalog from {data.label} to {rand.label}')  
     logger.info('Sorting redshifts')
-    z_sort = np.sort(data.data['Z'][_mask])
+
+    z_sort = np.sort(data.data['Z'])
     p = np.linspace(0, 1, len(z_sort), endpoint=True) #endpoint set to true will cause a biased estimator... but I chose it anyway to avoid invalid values later on.
 
     z_gen = interp1d(p, z_sort)
 
     NRAND = len(rand.data)
     logger.info('Interpolating redshift')
-    ran1 = np.random.random(int(NRAND))
+    ran1 = np.random.random(NRAND)
     rand.data['Z'] = z_gen(ran1)
 
     logger.info('Computing random positions')
