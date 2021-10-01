@@ -239,7 +239,7 @@ class FieldData:
         hdulist.close() 
 
     def prepare_data(self, zmin, zmax, downsampling, pixel_mask, nside):
-        logger.info('\nReading files: ', self.cat)
+        logger.info('\nReading files:\n\t{}'.format("\n\t".join(self.cat)))
         self.define_data_from_fits()
         self.fill_data()
         logger.debug(f'Length of {self.label} cat: {len(self.data)}')
@@ -312,7 +312,7 @@ def main(args=None):
             generate_random_from_data(data2, rand2, pixel_mask=args.pixel_mask, nside=args.nside)
             rand2.cat = []
             if args.store_generated_rands:
-                rand2.store_data_in_cat(f'{args.out_dir} / {rand2.label}.fits')
+                rand2.store_data_in_cat(Path(args.out_dir) / (rand2.label + '.fits'))
             rand2.compute_cov(f)
         else:
             rand2 = rand
