@@ -57,7 +57,8 @@ class TestComputeCorrelationsAuto(unittest.TestCase):
             self.out_dir.mkdir()
         
     def tearDown(self):
-        return
+        if self.out_dir.is_dir():
+            rmtree(self.out_dir)
 
     def test_autocorrelation(self):
         compute_correlations.main(self.args)
