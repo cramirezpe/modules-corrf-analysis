@@ -67,7 +67,7 @@ def getArgs(): # pragma: no cover
         action='store_true',
         help='Generate randoms2. Default: (Use the ones form randoms1)')
 
-    parser.add_argument("--randoms-from-nz",
+    parser.add_argument("--randoms-from-nz-file",
         type=Path,
         required=True,
         help="Compute randoms from dndz file provided as Path")
@@ -159,7 +159,7 @@ class FieldData:
         else:
             self.rsd = rsd
 
-    def __str__(self):
+    def __str__(self): # pragma: no cover
         return self.label
 
     @property
@@ -216,29 +216,31 @@ class FieldData:
     def compute_cov(self, interpolator):
         self.cov = interpolator(self.data['Z'])
 
-    def generate_random_redshifts_from_file(self, file):
+    def generate_random_redshifts_from_file(self, file, zmin=None, zmax=None):
         '''
             Generate random redshift values from an input dndz filename through the process:
                 p(z<zi) = N(z_i)/N(zmax) ->
                 z(p) = N_inv(N(zmax) p)
             where p in (0,1) and N the cumulative distribution.
         '''
-
         from scipy.interpolate import interp1d
 
         logger.info(f'Generating random catalog from file: {str(file)}')
         in_z, in_nz = np.loadtxt(file, unpack=True)
-        
+
+        zmin = zmin if zmin != None else in_z[0]
+        zmax = zmax if zmax != None else in_z[-1]
+
         # Cumulative distribution
         in_Nz = np.cumsum(in_nz)
+        N = interp1d(in_z, in_Nz)
         N_inv = interp1d(in_Nz, in_z)
-        N_tot = in_Nz[-1]
 
         NRAND = len(self.data)
 
-        logger.debug('Generating random number')
+        logger.debug('Generatin random number')
         ran = np.random.random(NRAND)
-        self.data['Z'] = N_inv(ran * N_tot)
+        self.data['Z'] = N_inv( ran*(N(zmax)-N(zmin)) + N(zmin) )
 
     def generate_random_redshifts_from_data(self, data):
         from scipy.interpolate import interp1d
@@ -271,10 +273,10 @@ class FieldData:
         _lambda = NRAND / len(pixel_mask)
         randoms_per_pixel = np.random.poisson(_lambda, len(pixel_mask))
         extra_objs = randoms_per_pixel.sum() - NRAND
-        if extra_objs > 0:
+        if extra_objs > 0: # pragma: no cover
             for i in range(np.abs(extra_objs)):
                 randoms_per_pixel[np.random.randint(0, len(pixel_mask))] -= 1
-        elif extra_objs < 0:
+        elif extra_objs < 0: # pragma: no cover
             for i in range(np.abs(extra_objs)):
                 randoms_per_pixel[np.random.randint(0, len(pixel_mask))] += 1
         
@@ -331,7 +333,7 @@ class FieldData:
 
         try:
             hdulist.writeto(filename, overwrite=False)
-        except OSError:
+        except OSError: # pragma: no cover
             logger.warning('Unable to write catalog to filename path.')
         
         hdulist.close() 
@@ -390,7 +392,10 @@ def main(args=None):
         rand.prepare_data(args.zmin, args.zmax, args.random_downsampling, args.pixel_mask, args.nside)
     else:
         rand.define_data_from_size(len(data.data))
-        rand.generate_random_redshifts_from_data(data)
+        if args.randoms_from_nz_file != None: # pragma: no cover
+            rand.generate_random_redshifts_from_file(args.randoms_from_nz_file)
+        else:
+            rand.generate_random_redshifts_from_data(data)
         rand.generate_random_positions(pixel_mask=args.pixel_mask, nside=args.nside)
         rand.cat = []
         if args.store_generated_rands:
@@ -405,10 +410,13 @@ def main(args=None):
             rand2 = FieldData(args.randoms2, 'Randoms2', file_type='zcat')
             rand2.prepare_data(args.zmin, args.zmax, args.random_downsampling, args.pixel_mask, args.nside)
             rand2.compute_cov(f)
-        elif args.generate_randoms2:
+        elif args.generate_randoms2: # pragma: no cover
             rand2 = FieldData(args.randoms2, 'Randoms2', file_type='zcat')
             rand2.define_data_from_size(len(data2.data))
-            rand2.generate_random_redshifts_from_data(data2)
+            if args.randoms_from_nz_file != None:
+                rand2.generate_random_redshifts_from_file(args.randoms_from_nz_file)
+            else:
+                rand2.generate_random_redshifts_from_data(data2)
             rand2.generate_random_positions(pixel_mask=args.pixel_mask, nside=args.nside)
             rand2.cat = []
             if args.store_generated_rands:

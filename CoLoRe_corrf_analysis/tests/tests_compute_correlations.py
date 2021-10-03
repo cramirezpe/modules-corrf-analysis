@@ -36,7 +36,7 @@ class TestComputeCorrelationsAuto(unittest.TestCase):
         randoms=[str(i) for i in catalogues.resolve().glob('s4_rsd_rand.fits')],
         data_format='zcat', data2_format='zcat',
         data2=None, randoms2=None, generate_randoms2=False,
-        store_generated_rands=True,
+        store_generated_rands=True, randoms_from_nz_file=None,
         data2_norsd=False,
         out_dir=str((out_dir).resolve()),
         nthreads=8,
@@ -113,7 +113,7 @@ class TestComputeCorrelationsCross(unittest.TestCase):
         data_norsd=False,
         randoms=[str(i) for i in catalogues.resolve().glob('s4_rsd_rand.fits')],
         data2=[str(i) for i in catalogues.resolve().glob('s1_rsd.fits')],
-        data2_norsd=False,
+        data2_norsd=False, randoms_from_nz_file=None,
         data_format='zcat', data2_format='zcat',
         randoms2=None, generate_randoms2=False,
         out_dir=str((out_dir).resolve()),
@@ -195,6 +195,60 @@ class TestComputeCorrelationsCross(unittest.TestCase):
 
         np.testing.assert_equal((DD,DR,RR), (DD_target, DR_target, RR_target))   
 
+class TestComputeRandoms(unittest.TestCase):
+    @patch('numpy.random.random', side_effect=mock_random_random)
+    def test_random_redshifts_from_nz_file(self, random_mock):
+        rand = compute_correlations.FieldData(cat=None, label=None, file_type=None)
+        nz_file = Path(__file__).parent / 'test_files' / 'randoms' / 'NzRed.txt'
+
+        rand.define_data_from_size(1000)
+        rand.generate_random_redshifts_from_file(nz_file)
+
+        target = np.loadtxt(nz_file.parent / 'target_values' / 'target_zs.dat')
+
+        np.testing.assert_equal(rand.data['Z'], target)
+
+    @patch('numpy.random.random', side_effect=mock_random_random)
+    def test_random_redshifts_from_nz_file_2(self, random_mock):
+        rand = compute_correlations.FieldData(cat=None, label=None, file_type=None)
+        nz_file = Path(__file__).parent / 'test_files' / 'randoms' / 'NzRed.txt'
+
+        rand.define_data_from_size(1000)
+        rand.generate_random_redshifts_from_file(nz_file, zmin=0.5, zmax=0.6)
+
+        target = np.loadtxt(nz_file.parent / 'target_values' / 'target_zs_cut.dat')
+
+        np.testing.assert_equal(rand.data['Z'], target)
+
+    @patch('numpy.random.random', side_effect=mock_random_random)
+    def test_random_positions(self, random_mock):
+        rand = compute_correlations.FieldData(cat=None, label=None, file_type=None)
+        
+        rand.define_data_from_size(1000)
+        rand.generate_random_positions(pixel_mask=[17], nside=2)
+
+        target_folder = Path(__file__).parent / 'test_files' / 'randoms' / 'target_values'
+
+        ra_target = np.loadtxt(target_folder / 'target_ra.dat')
+        dec_target = np.loadtxt(target_folder / 'target_dec.dat')
+
+        np.testing.assert_equal( (rand.data['RA'], rand.data['DEC']), (ra_target, dec_target))
+
+    @patch('numpy.random.random', side_effect=mock_random_random)
+    def test_random_positions_2(self, random_mock):
+        rand = compute_correlations.FieldData(cat=None, label=None, file_type=None)
+        
+        rand.define_data_from_size(1000)
+        rand.generate_random_positions()
+
+        target_folder = Path(__file__).parent / 'test_files' / 'randoms' / 'target_values'
+
+        ra_target = np.loadtxt(target_folder / 'target_ra2.dat')
+        dec_target = np.loadtxt(target_folder / 'target_dec2.dat')
+
+        np.testing.assert_equal( (rand.data['RA'], rand.data['DEC']), (ra_target, dec_target))
+
+
 class TestComputeCorrelationsReadCoLoRe(unittest.TestCase):
     files_path = Path(__file__).parent / 'test_files' / 'correlations'
     colore_box = files_path.parent / 'colore_box'
@@ -208,7 +262,7 @@ class TestComputeCorrelationsReadCoLoRe(unittest.TestCase):
         data2=[str(i) for i in colore_box.resolve().glob('out_srcs_s2*')],
         data2_norsd=True,
         data_format='CoLoRe', data2_format='CoLoRe',
-        randoms2=None, generate_randoms2=False,
+        randoms2=None, generate_randoms2=False, randoms_from_nz_file=None,
         out_dir=str((out_dir).resolve()),
         nthreads=8,
         mu_max=1, nmu_bins=4,
