@@ -393,7 +393,7 @@ def main(args=None):
     else:
         rand.define_data_from_size(len(data.data))
         if args.randoms_from_nz_file != None: # pragma: no cover
-            rand.generate_random_redshifts_from_file(args.randoms_from_nz_file)
+            rand.generate_random_redshifts_from_file(args.randoms_from_nz_file, zmin=args.zmin, zmax=args.zmax)
         else:
             rand.generate_random_redshifts_from_data(data)
         rand.generate_random_positions(pixel_mask=args.pixel_mask, nside=args.nside)
@@ -414,7 +414,7 @@ def main(args=None):
             rand2 = FieldData(args.randoms2, 'Randoms2', file_type='zcat')
             rand2.define_data_from_size(len(data2.data))
             if args.randoms_from_nz_file != None:
-                rand2.generate_random_redshifts_from_file(args.randoms_from_nz_file)
+                rand2.generate_random_redshifts_from_file(args.randoms_from_nz_file, zmin=args.zmin, zmax=args.zmax)
             else:
                 rand2.generate_random_redshifts_from_data(data2)
             rand2.generate_random_positions(pixel_mask=args.pixel_mask, nside=args.nside)
