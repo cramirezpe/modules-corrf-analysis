@@ -225,7 +225,7 @@ class TestComputeRandoms(unittest.TestCase):
         rand = compute_correlations.FieldData(cat=None, label=None, file_type=None)
         
         rand.define_data_from_size(1000)
-        rand.generate_random_positions(pixel_mask=[17], nside=2)
+        rand.generate_random_positions(pixel_mask=[12], nside=2)
 
         target_folder = Path(__file__).parent / 'test_files' / 'randoms' / 'target_values'
 

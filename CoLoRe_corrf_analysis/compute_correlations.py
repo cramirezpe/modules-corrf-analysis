@@ -69,7 +69,7 @@ def getArgs(): # pragma: no cover
 
     parser.add_argument("--randoms-from-nz-file",
         type=Path,
-        required=True,
+        required=False,
         help="Compute randoms from dndz file provided as Path")
 
     parser.add_argument("--store-generated-rands",
@@ -280,16 +280,19 @@ class FieldData:
             for i in range(np.abs(extra_objs)):
                 randoms_per_pixel[np.random.randint(0, len(pixel_mask))] += 1
         
-        max_pixrad = hp.pixelfunc.max_pixrad(nside)
         pix_area = hp.pixelfunc.nside2pixarea(nside)   
         _index=0
 
         for pixel, N in zip(pixel_mask, randoms_per_pixel):
             logger.info(f'Computing random positions for pixel {pixel}')
             pixel_center = hp.pix2ang(nside=nside, ipix=pixel)
-            th_range = (pixel_center[0] - max_pixrad, pixel_center[0] + max_pixrad)
-            # ph_range = (pixel_center[1] - max_pixrad, pixel_center[1] + max_pixrad)
-            range_size = np.abs((2*max_pixrad) * (np.cos(th_range[0])-np.cos(th_range[1])))
+            corners = hp.rotator.vec2dir(
+                hp.boundaries(nside, [pixel], step=1000)[0]
+            )
+            th_range = (min(corners[0]), max(corners[0]))
+            ph_range = (min(corners[1]), max(corners[1]))
+
+            range_size = np.abs((ph_range[1]-ph_range[0]) * (np.cos(th_range[0])-np.cos(th_range[1])))
 
             THs = []
             PHs = []
@@ -300,7 +303,7 @@ class FieldData:
                 ran1 = np.random.random(int(randoms_left/valid_fraction))
                 ran2 = np.random.random(int(randoms_left/valid_fraction))
 
-                new_PHs = pixel_center[1] + 2*(ran1-0.5)*max_pixrad
+                new_PHs = ran1*(ph_range[1]-ph_range[0]) + ph_range[0]
                 new_THs = np.arccos( np.cos(th_range[0]) - ran2*( np.cos(th_range[0])-np.cos(th_range[1]) ) )
                 new_pixels = hp.pixelfunc.ang2pix(nside, new_THs, new_PHs)
                 mask = new_pixels == pixel
