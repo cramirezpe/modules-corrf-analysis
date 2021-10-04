@@ -8,7 +8,7 @@ def main():
     parser.add_argument('--path', type=Path, default='.', help='Path to search on')
     parser.add_argument('--sort', type=str, nargs='+', default=None, help='Sorting by then by.. options: nside, rsd, rmin, rmax, zmin, zmax, N')
     parser.add_argument('--reverse', type=str, nargs='+', default=None, help='Reverse previous sorting. All of them if True, each one if list of bools')
-    parser.add_argument('--show-incompleted', action='store_ture', help='Print path to sub-boxes that are not completed.')
+    parser.add_argument('--show-incompleted', action='store_true', help='Print path to sub-boxes that are not completed.')
     args = parser.parse_args()
 
     if args.sort is not None:
