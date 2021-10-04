@@ -83,13 +83,14 @@ class FileFuncs:
         return output
 
     @staticmethod
-    def get_available_runs(path, sort_keys=None, reverse=None):
+    def get_available_runs(path, sort_keys=None, reverse=None, show_incompleted=False):
         ''' Method to get current runs for a given set of boxes.
         
         Args:
             path (Path or str): Path to the set of boxes.
             sort_keys (list, optional): List defining the keys to sort the columns. Options: (nside, rsd, rmin, rmax, N_bins, zmin, zmax, N). (Default: nside, rsd, rmin, rmax, zmin, zmax, N)
             reverse (bool, optional): Whether to reverse the previous list. (Default: False)
+            show_incompleted (bool, optional): Show path to sub-boxes that are not completed. (Default: False)
 
         Returns:   
             A tabulate table with the available runs. Can be easily printed using print()
@@ -116,7 +117,7 @@ class FileFuncs:
                                     sum_ += 1
                                 elif (sim_path / 'DD.dat').is_file():
                                     sum_ += 1
-                                else:
+                                elif show_incompleted:
                                     print(sim_path.resolve())
                         # print(f'nside: {nside_path.name[6:]}\t{rsd_path.name}\t{range_path.name}\t\t{zbin_path.name}\t\t{sims}')
                         t_rows.append((nside, rsd, rmin, rmax, N_bins, zmin, zmax, sum_))
