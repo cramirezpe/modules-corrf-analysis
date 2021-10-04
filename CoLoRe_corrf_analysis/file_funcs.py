@@ -88,14 +88,14 @@ class FileFuncs:
         
         Args:
             path (Path or str): Path to the set of boxes.
-            sort_keys (list, optional): List defining the keys to sort the columns. Options: (nside, rsd, rmin, rmax, zmin, zmax, N). (Default: nside, rsd, rmin, rmax, zmin, zmax, N)
+            sort_keys (list, optional): List defining the keys to sort the columns. Options: (nside, rsd, rmin, rmax, N_bins, zmin, zmax, N). (Default: nside, rsd, rmin, rmax, zmin, zmax, N)
             reverse (bool, optional): Whether to reverse the previous list. (Default: False)
 
         Returns:   
             A tabulate table with the available runs. Can be easily printed using print()
         '''
         path=Path(path)
-        t_header = ["nside", "rsd", "rmin", "rmax", "zmin", "zmax", "N"]
+        t_header = ["nside", "rsd", "rmin", "rmax", "N_bins", "zmin", "zmax", "N"]
         t_rows = []
         nsides_path = path.glob('nside*')
         for nside_path in nsides_path:
@@ -105,6 +105,7 @@ class FileFuncs:
                 for range_path in rsd_path.iterdir():
                     rmin = range_path.name.split('_')[0]
                     rmax = range_path.name.split('_')[1]
+                    N_bins = range_path.name.split('_')[2]
                     for zbin_path in range_path.iterdir():
                         zmin = zbin_path.name.split('_')[0]
                         zmax = zbin_path.name.split('_')[1]
@@ -113,10 +114,12 @@ class FileFuncs:
                             for sim_path in box.iterdir():
                                 if (sim_path / '0_DD.dat').is_file():
                                     sum_ += 1
+                                elif (sim_path / 'DD.dat').is_file():
+                                    sum_ += 1
                                 else:
                                     print(sim_path.resolve())
                         # print(f'nside: {nside_path.name[6:]}\t{rsd_path.name}\t{range_path.name}\t\t{zbin_path.name}\t\t{sims}')
-                        t_rows.append((nside, rsd, rmin, rmax, zmin, zmax, sum_))
+                        t_rows.append((nside, rsd, rmin, rmax, N_bins, zmin, zmax, sum_))
 
         if sort_keys is not None:
             if reverse is None: 
