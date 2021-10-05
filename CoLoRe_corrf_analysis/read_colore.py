@@ -542,6 +542,29 @@ class ComputeModelsCoLoRe(ReadCoLoRe):
 
         return k, evolved_pk
 
+    def get_theory(self, z, bias=None, bias2=None, lognormal=False, smooth_factor=None, tracer='dd'):
+        ''' Get theoretical correlation function by smoothing, evolving, biasing and lognormalizing the input power spectrum.
+
+        Args:
+            z (float): Redshift for the power spectrum.
+            bias (float, optional): Value for the bias. (Default: Read it from the input bias).
+            bias2 (float, optional): When cross-correlating fields, bias for the second field. (Default: same as bias -> auto-correlation).
+            lognormal (bool, optional): Whether to apply lognormal transformation. (Default: False).
+            smooth_factor (float, optional): Smoothing prefactor to apply for the power spectrum. (Default: using dd smoothing factor.)
+            tracer (str, optional): Tracer to compute the power spectrum. Options:
+                dd (DEFAULT): galaxy-galaxy like. It will bias the power spectrum twice (bias*bias2)
+                dm: galaxy-matter like. It will bias the power spectrum once (bias) 
+                mm: matter-matter like. Unbiased power spectrum.
+
+        Returns:
+            2D array (r, xi) for the power spectrum.
+        '''
+        pkl = self.get_theory_pk(z=z, bias=bias, bias2=bias2, lognormal=lognormal, smooth_factor=smooth_factor, tracer=tracer)
+        
+        _, xil = P2xi(self.k, l=0)(pkl)
+        
+        return xil
+
     def get_npole_pk(self, n, z, rsd=True, bias=None, rsd2=None, bias2=None, smooth_factor=None, smooth_factor_rsd=None, smooth_factor_cross=None):
         ''' Get the theoretical multipole power spectrum according to the model.
 
