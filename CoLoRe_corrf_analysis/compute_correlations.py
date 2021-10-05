@@ -260,6 +260,7 @@ class FieldData:
 
     def generate_random_positions(self, pixel_mask=None, nside=None):
         logger.info(f'Computing random positions for field {self.label}')
+        logger.critical('¡Random positions generator gives bad randoms! Use it at your own risk.')
         NRAND = len(self.data)
         if pixel_mask == None:
             ran1 = np.random.random(int(NRAND))
