@@ -82,7 +82,7 @@ def getArgs(): # pragma: no cover
         help='Store generated randoms in the output dir')
 
     parser.add_argument("--out-dir",
-        type=str,
+        type=Path,
         required=True,
         help='Output dir')
 
