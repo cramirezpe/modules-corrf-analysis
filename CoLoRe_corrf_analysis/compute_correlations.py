@@ -46,9 +46,9 @@ def getArgs(): # pragma: no cover
         default='zcat')
 
     parser.add_argument("--compute-npoles",
-        nargs='+',
+        nargs='*',
         type=int,
-        required=False,
+        default=[0, 2, 4],
         help='Compute npoles from output counts'
         )
         
