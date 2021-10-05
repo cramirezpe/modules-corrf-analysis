@@ -1,3 +1,4 @@
+import logging
 import numpy as np
 from pathlib import Path
 
@@ -5,6 +6,7 @@ from functools import cached_property
 from Corrfunc.utils import convert_3d_counts_to_cf
 from halotools.mock_observables import tpcf_multipole
 
+logger=logging.getLogger(__name__)
 class CFComputations:
     dtypes = {
     'names': ('smin', 'smax', 'savg', 'mu_max', 'npairs', 'weightavg'),
@@ -92,7 +94,10 @@ class CFComputations:
             npole = np.loadtxt(self.results_path / f'npole_{n}.dat')
         except OSError:
             npole = tpcf_multipole(self.halotools_like_cf, self.mubins, order=n)
-            np.savetxt(self.results_path / f'npole_{n}.dat', npole)
+            try:
+                np.savetxt(self.results_path / f'npole_{n}.dat', npole)
+            except PermissionError: # pragma: no cover
+                logger.info('Unable to save npole to file due to permission error')
         
         return npole
 
