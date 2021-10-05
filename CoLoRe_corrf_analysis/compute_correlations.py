@@ -3,16 +3,19 @@
     Script to compute the correlation of input master.fits catalogues using master_randoms.fits as randoms
 '''
 
-import numpy as np
-from astropy.io import fits
-import healpy as hp
-from Corrfunc.mocks.DDsmu_mocks import DDsmu_mocks
-from scipy import interpolate
-import scipy.integrate as integrate
 import argparse
 import logging
-from pathlib import Path
 import sys
+from pathlib import Path
+
+import healpy as hp
+import numpy as np
+import scipy.integrate as integrate
+from astropy.io import fits
+from Corrfunc.mocks.DDsmu_mocks import DDsmu_mocks
+from scipy import interpolate
+
+from CoLoRe_corrf_analysis.cf_helper import CFComputations
 
 version='0.12'
 logger = logging.getLogger(__name__)
@@ -485,7 +488,6 @@ def main(args=None):
 
     if args.compute_npoles != None: # pragma: no cover
         logger.info(f'Computing npoles:')
-        from CoLoRe_corrf_analysis.cf_helper import CFComputations
         CFComp = CFComputations(args.out_dir,  N_data_rand_ratio=1)
         for pole in args.compute_npoles:
             logger.info(f'\tnpole {pole}')
