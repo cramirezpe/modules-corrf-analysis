@@ -46,7 +46,7 @@ class TestComputeCorrelationsAuto(unittest.TestCase):
         zmin=0, zmax=10,
         zmin_covd=0.8, zmax_covd=1.5, zstep_covd=0.01,
         random_downsampling=1, pixel_mask=None, nside=2,
-        log_level='DEBUG'
+        log_level='DEBUG', compute_npoles=None,
     ) 
 
     def setUp(self):
@@ -103,6 +103,10 @@ class TestComputeCorrelationsAuto(unittest.TestCase):
         np.testing.assert_equal(z, z_targ)
         np.testing.assert_equal(RA, RA_targ)
 
+        np.testing.assert_equal(DD, DD_target)
+        np.testing.assert_equal(DR, DR_target)
+        np.testing.assert_equal(RR, RR_target)
+
 class TestComputeCorrelationsCross(unittest.TestCase):
     files_path = Path(__file__).parent / 'test_files' / 'correlations'
     catalogues = files_path.parent / 'catalogues'
@@ -124,7 +128,7 @@ class TestComputeCorrelationsCross(unittest.TestCase):
         zmin=0, zmax=10,
         zmin_covd=0.8, zmax_covd=1.5, zstep_covd=0.01,
         random_downsampling=1, pixel_mask=None, nside=2,
-        log_level='DEBUG'
+        log_level='DEBUG', compute_npoles=None,
     ) 
 
     def setUp(self):
@@ -271,7 +275,7 @@ class TestComputeCorrelationsReadCoLoRe(unittest.TestCase):
         zmin=0, zmax=10,
         zmin_covd=0.8, zmax_covd=1.5, zstep_covd=0.01,
         random_downsampling=1, pixel_mask=None, nside=2,
-        log_level='DEBUG'
+        log_level='DEBUG', compute_npoles=None,
     ) 
 
     def setUp(self):

@@ -9,12 +9,10 @@ import healpy as hp
 from Corrfunc.mocks.DDsmu_mocks import DDsmu_mocks
 from scipy import interpolate
 import scipy.integrate as integrate
-import glob
 import argparse
 import logging
 from pathlib import Path
 import sys
-import os
 
 version='0.12'
 logger = logging.getLogger(__name__)
@@ -47,6 +45,13 @@ def getArgs(): # pragma: no cover
         choices=['CoLoRe', 'zcat'],
         default='zcat')
 
+    parser.add_argument("--compute-npoles",
+        nargs='+',
+        type=int,
+        required=False,
+        help='Compute npoles from output counts'
+        )
+        
     parser.add_argument("--data2-norsd",
         action='store_true',
         help='If CoLoRe format selected: read noRSD redshifts for data2')
@@ -477,6 +482,12 @@ def main(args=None):
     
     if logging.root.level <= logging.DEBUG: # pragma: no cover
         logger.debug(f'Relative ellapsed time: {time.time() - start_computation}')
+
+    if args.compute_npoles != None: # pragma: no cover
+        from CoLoRe_corrf_analysis.cf_helper import CFComputations
+        CFComp = CFComputations(args.out_dir,  N_data_rand_ratio=1)
+        for pole in args.compute_npoles:
+            _ = CFComp.compute_npole(pole)
 
 def hhz(z):
     om=0.3147
