@@ -31,14 +31,14 @@ class TestComputeCorrelationsAuto(unittest.TestCase):
     out_dir = files_path / 'auto' / 'output'
 
     args = SimpleNamespace(
-        data=[str(i) for i in catalogues.resolve().glob('s4_rsd.fits')],
+        data=[Path(i) for i in catalogues.resolve().glob('s4_rsd.fits')],
         data_norsd=False,
-        randoms=[str(i) for i in catalogues.resolve().glob('s4_rsd_rand.fits')],
+        randoms=[Path(i) for i in catalogues.resolve().glob('s4_rsd_rand.fits')],
         data_format='zcat', data2_format='zcat',
         data2=None, randoms2=None, generate_randoms2=False,
         store_generated_rands=True, randoms_from_nz_file=None,
         data2_norsd=False,
-        out_dir=str((out_dir).resolve()),
+        out_dir=Path((out_dir).resolve()),
         nthreads=8,
         mu_max=1, nmu_bins=4,
         min_bin=0.1, max_bin=200, n_bins = 7,
@@ -113,14 +113,14 @@ class TestComputeCorrelationsCross(unittest.TestCase):
     out_dir = files_path / 'cross' / 'output'
 
     args = SimpleNamespace(
-        data=[str(i) for i in catalogues.resolve().glob('s4_rsd.fits')],
+        data=[Path(i) for i in catalogues.resolve().glob('s4_rsd.fits')],
         data_norsd=False,
-        randoms=[str(i) for i in catalogues.resolve().glob('s4_rsd_rand.fits')],
-        data2=[str(i) for i in catalogues.resolve().glob('s1_rsd.fits')],
+        randoms=[Path(i) for i in catalogues.resolve().glob('s4_rsd_rand.fits')],
+        data2=[Path(i) for i in catalogues.resolve().glob('s1_rsd.fits')],
         data2_norsd=False, randoms_from_nz_file=None,
         data_format='zcat', data2_format='zcat',
         randoms2=None, generate_randoms2=False,
-        out_dir=str((out_dir).resolve()),
+        out_dir=Path((out_dir).resolve()),
         nthreads=8,
         mu_max=1, nmu_bins=4,
         min_bin=0.1, max_bin=200, n_bins = 7,
@@ -260,14 +260,14 @@ class TestComputeCorrelationsReadCoLoRe(unittest.TestCase):
     out_dir = files_path / 'CoLoRe_read' / 'output'
 
     args = SimpleNamespace(
-        data=[str(i) for i in colore_box.resolve().glob('out_srcs_s2*')],
+        data=[Path(i) for i in colore_box.resolve().glob('out_srcs_s2*')],
         data_norsd=False,
-        randoms=[str(i) for i in catalogues.resolve().glob('s1_rsd.fits')],
-        data2=[str(i) for i in colore_box.resolve().glob('out_srcs_s2*')],
+        randoms=[Path(i) for i in catalogues.resolve().glob('s1_rsd.fits')],
+        data2=[Path(i) for i in colore_box.resolve().glob('out_srcs_s2*')],
         data2_norsd=True,
         data_format='CoLoRe', data2_format='CoLoRe',
         randoms2=None, generate_randoms2=False, randoms_from_nz_file=None,
-        out_dir=str((out_dir).resolve()),
+        out_dir=Path((out_dir).resolve()),
         nthreads=8,
         mu_max=1, nmu_bins=4,
         min_bin=0.1, max_bin=200, n_bins = 7,

@@ -21,7 +21,7 @@ def getArgs(): # pragma: no cover
     parser = argparse.ArgumentParser()
     parser.add_argument("--data",       
         nargs='+',
-        type=str, 
+        type=Path, 
         required=True, 
         help='Input data files')
 
@@ -36,7 +36,7 @@ def getArgs(): # pragma: no cover
 
     parser.add_argument("--data2",
         nargs='+',
-        type=str, 
+        type=Path, 
         required=False,
         help='Input data2 files')
 
@@ -58,13 +58,13 @@ def getArgs(): # pragma: no cover
     
     parser.add_argument("--randoms",    
         nargs='+',
-        type=str, 
+        type=Path, 
         required=False, 
         help='Input random files. If not provided they will be generated')
 
     parser.add_argument("--randoms2",
         nargs='+',
-        type=str,
+        type=Path,
         required=False,
         help='Input randoms2 files')
 
@@ -348,7 +348,7 @@ class FieldData:
         hdulist.close() 
 
     def prepare_data(self, zmin, zmax, downsampling, pixel_mask, nside):
-        logger.info('\nReading files:\n\t{}'.format("\n\t".join(self.cat)))
+        logger.info('\nReading files:\n\t{}'.format("\n\t".join([str(cat) for cat in self.cat])))
         self.define_data_from_fits()
         self.fill_data()
         logger.debug(f'Length of {self.label} cat: {len(self.data)}')
@@ -443,10 +443,10 @@ def main(args=None):
     if logging.root.level <= logging.DEBUG: # pragma: no cover
         start_computation = time.time()
 
-    info_file = Path(args.out_dir + '/README')
+    info_file = Path(args.out_dir / 'README')
     text=''
     for obj in [data, data2, rand, rand2]:
-        text+="\n{}\n\t{}".format(obj.label, "\n\t".join([cat for cat in obj.cat]))
+        text+="\n{}\n\t{}".format(obj.label, "\n\t".join([str(cat) for cat in obj.cat]))
 
     info_file.write_text(text)
 
@@ -475,18 +475,20 @@ def main(args=None):
             RA1=rand.data['RA'], DEC1=rand.data['DEC'], CZ1=rand.cov,
             RA2=data2.data['RA'], DEC2=data2.data['DEC'], CZ2=data2.cov,
             is_comoving_dist=True, verbose=True)
-        np.savetxt(args.out_dir + f'/RD.dat', RD)
-    np.savetxt(args.out_dir + f'/DD.dat', DD)
-    np.savetxt(args.out_dir + f'/DR.dat', DR)
-    np.savetxt(args.out_dir + f'/RR.dat', RR)
+        np.savetxt(args.out_dir / f'RD.dat', RD)
+    np.savetxt(args.out_dir / f'DD.dat', DD)
+    np.savetxt(args.out_dir / f'DR.dat', DR)
+    np.savetxt(args.out_dir / f'RR.dat', RR)
     
     if logging.root.level <= logging.DEBUG: # pragma: no cover
         logger.debug(f'Relative ellapsed time: {time.time() - start_computation}')
 
     if args.compute_npoles != None: # pragma: no cover
+        logger.info(f'Computing npoles:')
         from CoLoRe_corrf_analysis.cf_helper import CFComputations
         CFComp = CFComputations(args.out_dir,  N_data_rand_ratio=1)
         for pole in args.compute_npoles:
+            logger.info(f'\tnpole {pole}')
             _ = CFComp.compute_npole(pole)
 
 def hhz(z):
