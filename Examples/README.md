@@ -8,6 +8,9 @@ Examples on how to perform the analysis are given in this directory.
 
 - sim_bs_100_/check_bias_consistency..:
     Notebooks made to check that bias is not changing between different cross-correlation measurements for a given field.
+    
+- sim_bs_100_/sum_correlations.ipynb:
+    Notebook to check that we can sum different terms together and we obtain the correct mixed term. It shows that the only combination that we cannot predict properly is (0 1 2 3), that means, all the terms together or simulations with bias and RSD on both tracers.
 
 - 10_boxe_analysis:
     Notebook of the analysis of the initial 10 LSST boxes.
