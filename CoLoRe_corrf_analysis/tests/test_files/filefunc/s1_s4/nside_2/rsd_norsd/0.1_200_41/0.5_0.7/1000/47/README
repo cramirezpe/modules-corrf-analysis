@@ -1,0 +1,15 @@
+
+Data
+	/global/cscratch1/sd/damonge/CoLoRe_sims/sim_bs_1000/out_srcs_s1_0.fits
+	/global/cscratch1/sd/damonge/CoLoRe_sims/sim_bs_1000/out_srcs_s1_1.fits
+	/global/cscratch1/sd/damonge/CoLoRe_sims/sim_bs_1000/out_srcs_s1_2.fits
+	/global/cscratch1/sd/damonge/CoLoRe_sims/sim_bs_1000/out_srcs_s1_3.fits
+Data2
+	/global/cscratch1/sd/damonge/CoLoRe_sims/sim_bs_1000/out_srcs_s4_0.fits
+	/global/cscratch1/sd/damonge/CoLoRe_sims/sim_bs_1000/out_srcs_s4_1.fits
+	/global/cscratch1/sd/damonge/CoLoRe_sims/sim_bs_1000/out_srcs_s4_2.fits
+	/global/cscratch1/sd/damonge/CoLoRe_sims/sim_bs_1000/out_srcs_s4_3.fits
+Randoms
+	/global/cscratch1/sd/cramirez/NBodyKit/multibias/s1/catalogues/1000/rsd_rand.fits
+Randoms2
+	/global/cscratch1/sd/cramirez/NBodyKit/multibias/s4/catalogues/1000/norsd_rand.fits

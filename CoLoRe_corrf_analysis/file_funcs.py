@@ -25,12 +25,70 @@ class FileFuncs:
         '''
         rsd = 'rsd' if rsd else 'norsd'
         if rsd2 != None:
-            if rsd2:
+            if rsd2: # pragma: no cover
                 rsd += '_rsd'
             else:
                 rsd += '_norsd'
 
         return Path(basedir) / f'nside_{nside}' / rsd / f'{rmin}_{rmax}_{N_bins}' / f'{zmin}_{zmax}' 
+
+    @staticmethod
+    def get_available_count_files(path):
+        ''' Method to get the available count files in a given path.
+        
+        Args:
+            path (Path): Path to the output_files.
+            
+        Returns:
+            set of pairs of the form 'DD', 'DR', 'RD', 'RR'
+        '''
+        options = ['DD', 'DR', 'RD', 'RR']
+        available = set()
+        for file in path.glob('0_*.dat'):
+            if file.name[2:4] in options:
+                available.add(file.name[2:4])
+        for file in path.glob('*.dat'):
+            if file.name[:2] in options:
+                available.add(file.name[:2])
+        
+        return available
+
+    @staticmethod
+    def copy_counts_file(in_path, out_path, counts):
+        import shutil
+        ''' Method to copy count output files from one path to another in order to save the time it would take to compute it again.
+        
+        Args:
+            in_path (Path or str): input path to copy the files from.
+            out_path (Path or str): output path to copy the files to.
+            counts (str): Counts that we want to copy. Options: ('DD', 'DR', 'RD', 'RR').
+
+        Returns:
+            Writes a file origin_{counts}.txt in out_path with the original path fo the file copied.
+        '''
+        in_path = Path(in_path)
+        out_path = Path(out_path)
+        
+        if counts not in ('DD', 'DR', 'RD', 'RR'): # pragma: no cover
+            raise ValueError('Invalid value of count')
+
+        if (out_path / f'{counts}.dat').is_file():
+            raise ValueError('File already exists', out_path / f'{counts}.dat')
+        for file in out_path.glob('npole*.dat'):
+            if file.is_file():
+                raise ValueError('Computed npole in output path. Aborting copy...', str(file.resolve())) 
+        
+        if (in_path / f'0_{counts}.dat').is_file(): # pragma: no cover
+            in_file = in_path / f'0_{counts}.dat'
+        elif (in_path / f'{counts}.dat').is_file():
+            in_file = in_path / f'{counts}.dat'
+        
+        shutil.copy(in_file, out_path / f'{counts}.dat')
+
+        info_file = out_path / f'origin_{counts}.txt'
+        info_file.write_text(str(in_file.resolve()))
+
+        return       
 
     @staticmethod
     def get_available_pixels(path, boxes=None):
@@ -50,7 +108,10 @@ class FileFuncs:
         for box in boxes:
             _boxdir = path / str(box)
             for _subdir in _boxdir.iterdir():
-                if (_subdir / '0_DD.dat').is_file() or (_subdir / 'DD.dat').is_file():
+                for count in ('DD', 'DR', 'RD', 'RR'):
+                    if not (_subdir / f'0_{count}.dat').is_file() and not (_subdir / f'{count}.dat').is_file():
+                        break
+                else:
                     available_pixels.append(_subdir)
         return available_pixels
 
@@ -83,7 +144,7 @@ class FileFuncs:
         return output
 
     @staticmethod
-    def get_available_runs(path, sort_keys=None, reverse=None, show_incompleted=False):
+    def get_available_runs(path, sort_keys=None, reverse=None, show_incompleted=False): # pragma: no cover
         ''' Method to get current runs for a given set of boxes.
         
         Args:
