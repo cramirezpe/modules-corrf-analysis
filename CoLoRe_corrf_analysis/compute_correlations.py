@@ -158,13 +158,17 @@ def getArgs(): # pragma: no cover
         type=int,
         help='nside for the pixel mask')
 
+    parser.add_argument('--reverse-RSD',
+        action='store_true',
+        help='Reverse the effect of RSD')
+
     parser.add_argument('--log-level', default='WARNING', choices=['CRITICAL', 'ERROR', 'WARNING', 'INFO', 'DEBUG', 'NOTSET'])
 
     args = parser.parse_args()
     return args
 
 class FieldData:
-    def __init__(self, cat, label, file_type, rsd=False):
+    def __init__(self, cat, label, file_type, rsd=False, reverse_RSD=False):
         self.cat   = cat
         self.label  = label
         self.file_type = file_type
@@ -172,6 +176,7 @@ class FieldData:
             self.rsd = False
         else:
             self.rsd = rsd
+        self.reverse_RSD = reverse_RSD
 
     def __str__(self): # pragma: no cover
         return self.label
@@ -210,7 +215,11 @@ class FieldData:
             self.data['DEC'][_index:_index+_file_size] = self.fits[1].data['DEC']
             self.data['Z'][_index:_index+_file_size]   = self.fits[1].data[self.zfield]
             if self.rsd:
-                self.data['Z'][_index:_index+_file_size] += self.fits[1].data['DZ_RSD']
+                if self.reverse_RSD:
+                    self.data['Z'][_index:_index+_file_size] -= self.fits[1].data['DZ_RSD']
+                else:
+                    self.data['Z'][_index:_index+_file_size] += self.fits[1].data['DZ_RSD']
+            
             _index += _file_size
 
     def apply_downsampling(self, downsampling): # pragma: no cover
@@ -430,13 +439,13 @@ def main(args=None):
 
     data_to_use = set()
     if 'D1' in to_compute:
-        data = FieldData(args.data, 'Data', file_type=args.data_format, rsd=not(args.data_norsd))
+        data = FieldData(args.data, 'Data', file_type=args.data_format, rsd=not(args.data_norsd), reverse_RSD=args.reverse_RSD)
         data.prepare_data(args.zmin, args.zmax, args.data_downsampling, args.pixel_mask, args.nside)
         data.compute_cov(f)
         data_to_use.add(data)
 
     if 'D2' in to_compute or args.generate_randoms2:
-        data2 = FieldData(args.data2, 'Data2', file_type=args.data2_format, rsd=not(args.data2_norsd))
+        data2 = FieldData(args.data2, 'Data2', file_type=args.data2_format, rsd=not(args.data2_norsd), reverse_RSD=args.reverse_RSD)
         data2.prepare_data(args.zmin, args.zmax, args.data_downsampling, args.pixel_mask, args.nside)
         data2.compute_cov(f)
         data_to_use.add(data2)
