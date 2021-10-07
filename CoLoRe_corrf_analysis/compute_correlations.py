@@ -16,6 +16,7 @@ from Corrfunc.mocks.DDsmu_mocks import DDsmu_mocks
 from scipy import interpolate
 
 from CoLoRe_corrf_analysis.cf_helper import CFComputations
+from CoLoRe_corrf_analysis.file_funcs import FileFuncs
 
 version='0.12'
 logger = logging.getLogger(__name__)
@@ -395,29 +396,64 @@ def main(args=None):
 
     Path(args.out_dir).mkdir(exist_ok=True)
 
-    data = FieldData(args.data, 'Data', file_type=args.data_format, rsd=not(args.data_norsd))
-    data.prepare_data(args.zmin, args.zmax, args.random_downsampling, args.pixel_mask, args.nside)
-    data.compute_cov(f)
-
-    rand = FieldData(args.randoms, 'Randoms', file_type='zcat')
-    if args.randoms != None:
-        rand.prepare_data(args.zmin, args.zmax, args.random_downsampling, args.pixel_mask, args.nside)
-    else:
-        rand.define_data_from_size(len(data.data))
-        if args.randoms_from_nz_file != None: # pragma: no cover
-            rand.generate_random_redshifts_from_file(args.randoms_from_nz_file, zmin=args.zmin, zmax=args.zmax)
-        else:
-            rand.generate_random_redshifts_from_data(data)
-        rand.generate_random_positions(pixel_mask=args.pixel_mask, nside=args.nside)
-        rand.cat = []
-        if args.store_generated_rands:
-            rand.store_data_in_cat(Path(args.out_dir) / (rand.label + '.fits'))
-    rand.compute_cov(f)
-
+    # Logic for which fields I need to incorporate
+    available_counts = FileFuncs.get_available_count_files(args.out_dir)
+    to_compute = set()
     if args.data2 != None:
+        if 'DD' not in available_counts:
+            to_compute.add('D1')
+            to_compute.add('D2')
+
+        if 'RR' not in available_counts:
+            to_compute.add('R1')
+            to_compute.add('R2')
+
+        if 'RD' not in available_counts:
+            to_compute.add('R1')
+            to_compute.add('D2')
+
+        if 'DR' not in available_counts:
+            to_compute.add('R2')
+            to_compute.add('D1')
+    else:
+        to_compute.add('D1')
+        if ('RR' not in available_counts) or ('DR' not in available_counts):
+            to_compute.add('R1')
+
+
+    data_to_use = set()
+    if 'D1' in to_compute:
+        data = FieldData(args.data, 'Data', file_type=args.data_format, rsd=not(args.data_norsd))
+        data.prepare_data(args.zmin, args.zmax, args.random_downsampling, args.pixel_mask, args.nside)
+        data.compute_cov(f)
+        data_to_use.add(data)
+
+    if 'D2' in to_compute or args.generate_randoms2:
         data2 = FieldData(args.data2, 'Data2', file_type=args.data2_format, rsd=not(args.data2_norsd))
         data2.prepare_data(args.zmin, args.zmax, args.random_downsampling, args.pixel_mask, args.nside)
         data2.compute_cov(f)
+        data_to_use.add(data2)
+    else:
+        data2 = data
+
+    if 'R1' in to_compute:
+        rand = FieldData(args.randoms, 'Randoms', file_type='zcat')
+        if args.randoms != None:
+            rand.prepare_data(args.zmin, args.zmax, args.random_downsampling, args.pixel_mask, args.nside)
+        else:
+            rand.define_data_from_size(len(data.data))
+            if args.randoms_from_nz_file != None: # pragma: no cover
+                rand.generate_random_redshifts_from_file(args.randoms_from_nz_file, zmin=args.zmin, zmax=args.zmax)
+            else:
+                rand.generate_random_redshifts_from_data(data)
+            rand.generate_random_positions(pixel_mask=args.pixel_mask, nside=args.nside)
+            rand.cat = []
+            if args.store_generated_rands:
+                rand.store_data_in_cat(Path(args.out_dir) / (rand.label + '.fits'))
+        rand.compute_cov(f)
+        data_to_use.add(rand)
+        
+    if 'R2' in to_compute:
         if args.randoms2 != None:
             rand2 = FieldData(args.randoms2, 'Randoms2', file_type='zcat')
             rand2.prepare_data(args.zmin, args.zmax, args.random_downsampling, args.pixel_mask, args.nside)
@@ -436,8 +472,8 @@ def main(args=None):
             rand2.compute_cov(f)
         else:
             rand2 = rand
+            data_to_use.add(rand2)
     else:
-        data2 = data
         rand2 = rand
 
     bins2p=np.linspace(args.min_bin, args.max_bin, args.n_bins)
@@ -448,30 +484,36 @@ def main(args=None):
 
     info_file = Path(args.out_dir / 'README')
     text=''
-    for obj in [data, data2, rand, rand2]:
+    for obj in data_to_use:
         text+="\n{}\n\t{}".format(obj.label, "\n\t".join([str(cat) for cat in obj.cat]))
 
     info_file.write_text(text)
 
-    logger.info('Computing DD...')
-    DD = DDsmu_mocks(autocorr=data==data2, 
-        cosmology=2, nthreads=args.nthreads, mu_max=args.mu_max, nmu_bins=args.nmu_bins, binfile=bins2p, RA1=data.data['RA'], DEC1=data.data['DEC'], CZ1=data.cov, 
-        RA2=data2.data['RA'], DEC2=data2.data['DEC'], CZ2=data2.cov, 
-        is_comoving_dist=True, verbose=True)
+    if 'DD' not in available_counts:
+        logger.info('Computing DD...')
+        DD = DDsmu_mocks(autocorr=data==data2, 
+            cosmology=2, nthreads=args.nthreads, mu_max=args.mu_max, nmu_bins=args.nmu_bins, binfile=bins2p, RA1=data.data['RA'], DEC1=data.data['DEC'], CZ1=data.cov, 
+            RA2=data2.data['RA'], DEC2=data2.data['DEC'], CZ2=data2.cov, 
+            is_comoving_dist=True, verbose=True)
+        np.savetxt(args.out_dir / f'DD.dat', DD)
 
-    logger.info('Computing DR...')
-    DR = DDsmu_mocks(autocorr=0, 
-        cosmology=2, nthreads=args.nthreads, mu_max=args.mu_max, nmu_bins=args.nmu_bins, binfile=bins2p, RA1=data.data['RA'], DEC1=data.data['DEC'], CZ1=data.cov, 
-        RA2=rand2.data['RA'],DEC2=rand2.data['DEC'], CZ2=rand2.cov, 
-        is_comoving_dist=True, verbose=True)
+    if 'DR' not in available_counts:
+        logger.info('Computing DR...')
+        DR = DDsmu_mocks(autocorr=0, 
+            cosmology=2, nthreads=args.nthreads, mu_max=args.mu_max, nmu_bins=args.nmu_bins, binfile=bins2p, RA1=data.data['RA'], DEC1=data.data['DEC'], CZ1=data.cov, 
+            RA2=rand2.data['RA'],DEC2=rand2.data['DEC'], CZ2=rand2.cov, 
+            is_comoving_dist=True, verbose=True)
+        np.savetxt(args.out_dir / f'DR.dat', DR)
 
-    logger.info('Computing RR...')
-    RR = DDsmu_mocks(autocorr=rand==rand2, 
-        cosmology=2, nthreads=args.nthreads, mu_max=args.mu_max, nmu_bins=args.nmu_bins, binfile=bins2p, RA1=rand.data['RA'], DEC1=rand.data['DEC'], CZ1=rand.cov,
-        RA2=rand2.data['RA'], DEC2=rand2.data['DEC'], CZ2=rand2.cov,
-        is_comoving_dist=True, verbose=True)
+    if 'RR' not in available_counts:
+        logger.info('Computing RR...')
+        RR = DDsmu_mocks(autocorr=rand==rand2, 
+            cosmology=2, nthreads=args.nthreads, mu_max=args.mu_max, nmu_bins=args.nmu_bins, binfile=bins2p, RA1=rand.data['RA'], DEC1=rand.data['DEC'], CZ1=rand.cov,
+            RA2=rand2.data['RA'], DEC2=rand2.data['DEC'], CZ2=rand2.cov,
+            is_comoving_dist=True, verbose=True)
+        np.savetxt(args.out_dir / f'RR.dat', RR)
 
-    if data2!=data:
+    if 'RD' not in available_counts and data2!=data:
         logger.info('Computing RD...')
         RD = DDsmu_mocks(autocorr=0, 
             cosmology=2, nthreads=args.nthreads, mu_max=args.mu_max, nmu_bins=args.nmu_bins, binfile=bins2p,
@@ -479,10 +521,7 @@ def main(args=None):
             RA2=data2.data['RA'], DEC2=data2.data['DEC'], CZ2=data2.cov,
             is_comoving_dist=True, verbose=True)
         np.savetxt(args.out_dir / f'RD.dat', RD)
-    np.savetxt(args.out_dir / f'DD.dat', DD)
-    np.savetxt(args.out_dir / f'DR.dat', DR)
-    np.savetxt(args.out_dir / f'RR.dat', RR)
-    
+
     if logging.root.level <= logging.DEBUG: # pragma: no cover
         logger.debug(f'Relative ellapsed time: {time.time() - start_computation}')
 
