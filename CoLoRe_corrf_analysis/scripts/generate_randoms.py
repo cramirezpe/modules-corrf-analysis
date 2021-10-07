@@ -3,7 +3,10 @@ from pathlib import Path
 
 import numpy as np
 from CoLoRe_corrf_analysis.compute_correlations import FieldData
+import logging
+import sys
 
+logger = logging.getLogger(__name__)
 
 def getArgs():
     parser = argparse.ArgumentParser()
@@ -11,11 +14,13 @@ def getArgs():
     parser.add_argument('--from-cat', type=Path, required=False, help='Compute randoms from given drq cat')
     parser.add_argument('--from-colore', type=Path, required=False, help='Compute randoms from given CoLoRe box')
     parser.add_argument('--out-cat', type=Path, required=Path, help='Output filename for random catalogue')
-    parser.add_argument('--zmin', default=0)
-    parser.add_argument('--zmax', default=1.5)
+    parser.add_argument('--zmin', type=float, default=0)
+    parser.add_argument('--zmax', type=float, default=1.5)
     parser.add_argument('--downsampling', type=float, default=1, help='Downsampling to apply')
     parser.add_argument('--pixel-mask', type=int, required=False, nargs='+', help='Pixel mask')
     parser.add_argument('--nside', type=int, default=2, help='nside to use for pixel mask')
+
+    parser.add_argument('--log-level', default='WARNING', choices=['CRITICAL', 'ERROR', 'WARNING', 'INFO', 'DEBUG', 'NOTSET'])
 
     args = parser.parse_args()
     return args
@@ -23,6 +28,9 @@ def getArgs():
 def main(args=None):
     if args is None: # pragma: no cover
         args = getArgs()
+        
+    level = logging.getLevelName(args.log_level)
+    logging.basicConfig(stream=sys.stdout, level=level, format='%(levelname)s:%(name)s:%(funcName)s:%(message)s')
 
     if args.from_nz_file != None:
         from scipy.integrate import quad
@@ -31,8 +39,10 @@ def main(args=None):
         z, nz = np.loadtxt(args.from_nz_file, unpack=True)
         nz_interp = interp1d(z, nz)
         NRAND = 41252.96*quad(nz_interp, args.zmin, args.zmax)[0]
+        logger.info(f'Number of randoms to generate {NRAND}')
         NRAND *= args.downsampling
         NRAND = int(NRAND)
+        logger.info(f'Number of randoms to generate after downsampling {NRAND}')
 
         rand = FieldData(None, 'Randoms', file_type=None)
         rand.define_data_from_size(NRAND)

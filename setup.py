@@ -20,6 +20,7 @@ setuptools.setup(
             'CoLoRe_corrf_run_correlations = CoLoRe_corrf_analysis.compute_correlations:main',
             'CoLoRe_corrf_npoles_crawler = CoLoRe_corrf_analysis.scripts.crawler_compute_npoles:main',
             'CoLoRe_corrf_copy_counts = CoLoRe_corrf_analysis.scripts.copy_counts_files_bulk:main',
+            'CoLoRe_corrf_generate_randoms = CoLoRe_corrf_analysis.scripts.generate_randoms:main',
         ]
     },
     classifiers=[

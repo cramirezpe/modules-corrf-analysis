@@ -137,10 +137,15 @@ def getArgs(): # pragma: no cover
         default=0.01,
         help='Bins for covd interpolation')
 
-    parser.add_argument('--random-downsampling',
+    parser.add_argument('--data-downsampling',
         type=float,
         default=1,
-        help='Random downsampling to apply before computing')
+        help='Downsampling to be applied to data')
+
+    parser.add_argument('--randoms-downsampling',
+        type=float, 
+        default=1,
+        help='Downsampling to be applied to randoms')
 
     parser.add_argument('--pixel-mask',
         nargs='+',
@@ -426,13 +431,13 @@ def main(args=None):
     data_to_use = set()
     if 'D1' in to_compute:
         data = FieldData(args.data, 'Data', file_type=args.data_format, rsd=not(args.data_norsd))
-        data.prepare_data(args.zmin, args.zmax, args.random_downsampling, args.pixel_mask, args.nside)
+        data.prepare_data(args.zmin, args.zmax, args.data_downsampling, args.pixel_mask, args.nside)
         data.compute_cov(f)
         data_to_use.add(data)
 
     if 'D2' in to_compute or args.generate_randoms2:
         data2 = FieldData(args.data2, 'Data2', file_type=args.data2_format, rsd=not(args.data2_norsd))
-        data2.prepare_data(args.zmin, args.zmax, args.random_downsampling, args.pixel_mask, args.nside)
+        data2.prepare_data(args.zmin, args.zmax, args.data_downsampling, args.pixel_mask, args.nside)
         data2.compute_cov(f)
         data_to_use.add(data2)
     else:
@@ -441,7 +446,7 @@ def main(args=None):
     if 'R1' in to_compute:
         rand = FieldData(args.randoms, 'Randoms', file_type='zcat')
         if args.randoms != None:
-            rand.prepare_data(args.zmin, args.zmax, args.random_downsampling, args.pixel_mask, args.nside)
+            rand.prepare_data(args.zmin, args.zmax, args.randoms_downsampling, args.pixel_mask, args.nside)
         else:
             rand.define_data_from_size(len(data.data))
             if args.randoms_from_nz_file != None: # pragma: no cover
@@ -458,7 +463,7 @@ def main(args=None):
     if 'R2' in to_compute:
         if args.randoms2 != None:
             rand2 = FieldData(args.randoms2, 'Randoms2', file_type='zcat')
-            rand2.prepare_data(args.zmin, args.zmax, args.random_downsampling, args.pixel_mask, args.nside)
+            rand2.prepare_data(args.zmin, args.zmax, args.randoms_downsampling, args.pixel_mask, args.nside)
             rand2.compute_cov(f)
         elif args.generate_randoms2: # pragma: no cover
             rand2 = FieldData(args.randoms2, 'Randoms2', file_type='zcat')
