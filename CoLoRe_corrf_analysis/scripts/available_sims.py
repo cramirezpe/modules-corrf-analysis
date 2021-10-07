@@ -13,7 +13,7 @@ def main():
 
     if args.sort is not None:
         for x in args.sort:
-            assert x in ('nside', 'rsd', 'rmin', 'rmax', 'zmin', 'zmax', 'N')
+            assert x in ('nside', 'rsd', 'rmin', 'rmax', 'N_bins', 'zmin', 'zmax', 'N')
 
         if args.reverse is not None:
             reverse = []
