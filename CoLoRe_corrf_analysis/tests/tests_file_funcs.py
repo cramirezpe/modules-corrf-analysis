@@ -63,7 +63,7 @@ class TestCopyConts(unittest.TestCase):
             FileFuncs.copy_counts_file(
                 in_path=self.s1_s4_full / '1000' / '3',
                 out_path=self.s1_full / '1000' / '3',
-                counts='DD')        
+                in_counts='DD')        
 
         assert cm.exception.args[0] == 'File already exists'
         assert cm.exception.args[1] == self.s1_full / '1000' / '3' / 'DD.dat'
@@ -73,7 +73,7 @@ class TestCopyConts(unittest.TestCase):
             FileFuncs.copy_counts_file(
                 in_path=self.s1_s4_full / '1000' / '0',
                 out_path=self.s1_full / '1000' / '0',
-                counts='DD')
+                in_counts='DD')
             
         assert cm.exception.args[0] == 'Computed npole in output path. Aborting copy...'
         assert cm.exception.args[1][:-5] == str(self.s1_full / '1000' / '0' / 'npole_')
@@ -82,7 +82,7 @@ class TestCopyConts(unittest.TestCase):
         FileFuncs.copy_counts_file(
             in_path=self.s1_s4_full / '1000' / '1',
             out_path=self.s1_full / '1000' / '1',
-            counts='DD'
+            in_counts='DD'
         )
 
         origin = np.loadtxt(self.s1_s4_full / '1000' / '1' / 'DD.dat') 

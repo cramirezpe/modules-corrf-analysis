@@ -54,7 +54,7 @@ class FileFuncs:
         return available
 
     @staticmethod
-    def copy_counts_file(in_path, out_path, counts):
+    def copy_counts_file(in_path, out_path, in_counts, out_counts=None):
         import shutil
         ''' Method to copy count output files from one path to another in order to save the time it would take to compute it again.
         
@@ -69,23 +69,28 @@ class FileFuncs:
         in_path = Path(in_path)
         out_path = Path(out_path)
         
-        if counts not in ('DD', 'DR', 'RD', 'RR'): # pragma: no cover
+        if out_counts == None:
+            out_counts = in_counts
+
+        if in_counts not in ('DD', 'DR', 'RD', 'RR') or out_counts not in ('DD', 'DR', 'RD', 'RR'): # pragma: no cover
             raise ValueError('Invalid value of count')
 
-        if (out_path / f'{counts}.dat').is_file():
-            raise ValueError('File already exists', out_path / f'{counts}.dat')
+        if (out_path / f'{out_counts}.dat').is_file():
+            raise ValueError('File already exists', out_path / f'{out_counts}.dat')
         for file in out_path.glob('npole*.dat'):
             if file.is_file():
                 raise ValueError('Computed npole in output path. Aborting copy...', str(file.resolve())) 
         
-        if (in_path / f'0_{counts}.dat').is_file(): # pragma: no cover
-            in_file = in_path / f'0_{counts}.dat'
-        elif (in_path / f'{counts}.dat').is_file():
-            in_file = in_path / f'{counts}.dat'
+        if (in_path / f'0_{in_counts}.dat').is_file(): # pragma: no cover
+            in_file = in_path / f'0_{in_counts}.dat'
+        elif (in_path / f'{in_counts}.dat').is_file():
+            in_file = in_path / f'{in_counts}.dat'
+        else:
+            raise ValueError("Couldn't find input file in", in_path)
         
-        shutil.copy(in_file, out_path / f'{counts}.dat')
+        shutil.copy(in_file, out_path / f'{out_counts}.dat')
 
-        info_file = out_path / f'origin_{counts}.txt'
+        info_file = out_path / f'origin_{out_counts}.txt'
         info_file.write_text(str(in_file.resolve()))
 
         return       
