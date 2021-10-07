@@ -56,6 +56,7 @@ class TestCopyConts(unittest.TestCase):
         )
 
         (self.s1_full / '1000' / '1' / 'DD.dat').unlink(missing_ok=True)
+        (self.s1_full / '1000' / '1' / 'origin_DD.txt').unlink(missing_ok=True)
 
     def test_copy_counts_wont_copy_if_exists(self):
         with self.assertRaises(ValueError) as cm:
