@@ -542,7 +542,7 @@ class ComputeModelsCoLoRe(ReadCoLoRe):
 
         return k, evolved_pk
 
-    def get_theory(self, z, bias=None, bias2=None, lognormal=False, smooth_factor=None, tracer='dd'):
+    def get_theory(self, z, bias=None, bias2=None, lognormal=False, smooth_factor=None, tracer='dd'): # pragma: no cover
         ''' Get theoretical correlation function by smoothing, evolving, biasing and lognormalizing the input power spectrum.
 
         Args:
