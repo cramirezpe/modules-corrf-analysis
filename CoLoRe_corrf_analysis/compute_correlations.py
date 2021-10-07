@@ -279,6 +279,8 @@ class FieldData:
             self.data['DEC'] = np.degrees(np.arcsin(2.*(ran2-0.5)))
 
             return
+        else:
+            raise ValueError('Code to generate pixel_mask not yet working')
 
         _lambda = NRAND / len(pixel_mask)
         randoms_per_pixel = np.random.poisson(_lambda, len(pixel_mask))
