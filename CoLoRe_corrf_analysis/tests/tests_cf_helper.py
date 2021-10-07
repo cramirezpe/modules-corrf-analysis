@@ -75,6 +75,20 @@ class TestComputeFiles(unittest.TestCase):
         target = np.loadtxt(self.test_files / 'npole_files' / 'npole_0.dat')
         np.testing.assert_equal(pole_0, target)
 
+    def test_remove_computed(self):
+        cf = self.cfccomp.halotools_like_cf
+
+        pole_0 = self.cfccomp.compute_npole(0)
+        pole_2 = self.cfccomp.compute_npole(2)
+        
+        self.cfccomp.remove_computed_npoles()
+
+        target0 = self.test_files /  'npole_0.dat'
+        target2 = self.test_files /  'npole_2.dat'
+
+        assert not target0.is_file()
+        assert not target2.is_file()
+
     def test_read_quadrupole(self):
         cf = self.cfccomp.halotools_like_cf
 

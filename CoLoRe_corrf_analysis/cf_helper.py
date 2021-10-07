@@ -101,6 +101,11 @@ class CFComputations:
         
         return npole
 
+    def remove_computed_npoles(self, poles=[0,2,4]):
+        for pole in poles:
+            file = self.results_path / f'npole_{pole}.dat'
+            file.unlink(missing_ok=True)
+
 def main(): # pragma: no cover
     import argparse
     import os
