@@ -65,13 +65,16 @@ def copy_counts_from_analysis(in_analysis, out_analysis, counts_to_copy, counts_
             for in_counts, out_counts in zip(counts_to_copy, counts_to_copy_as):
                 FileFuncs.copy_counts_file(in_path=pixel,
                     out_path=full_out_path / out_box.name / pixel.name, 
-                    counts=in_counts
+                    in_counts=in_counts,
+                    out_counts=out_counts
                 )
 
 def str2bool(v):
     if isinstance(v, bool):
        return v
     if v == None:
+        return None
+    if v.lower() in ('none'):
         return None
     if v.lower() in ('yes', 'true', 't', 'y', '1'):
         return True
