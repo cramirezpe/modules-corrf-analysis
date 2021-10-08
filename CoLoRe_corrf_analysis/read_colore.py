@@ -565,7 +565,7 @@ class ComputeModelsCoLoRe(ReadCoLoRe):
         
         return xil
 
-    def get_npole_pk(self, n, z, rsd=True, bias=None, rsd2=None, bias2=None, smooth_factor=None, smooth_factor_rsd=None, smooth_factor_cross=None):
+    def get_npole_pk(self, n, z, rsd=True, bias=None, rsd2=None, bias2=None, smooth_factor=None, smooth_factor_rsd=None, smooth_factor_cross=None, reverse_rsd=False, reverse_rsd2=False):
         ''' Get the theoretical multipole power spectrum according to the model.
 
         Args:
@@ -578,6 +578,8 @@ class ComputeModelsCoLoRe(ReadCoLoRe):
             smooth_factor (float, optional): Smoothing prefactor for the lognormalized field dd (<delta_LN delta_LN>), as the 1.1 in "double rsm2_gg=par->r2_smooth+1.1*pow(par->l_box/par->n_grid,2)/12.". (Default: Value used in __init__ method).
             smooth_factor_rsd (float, optional): Smoothing prefactor for the matter matter field. <delta_L delta_L>. (Default: Value used in __init__ method).
             smooth_factor_cross (float, optional): Smoothing prefactor for the matter galaxy (dm) field. <delta_LN delta_L>. (Default: Value used in __init__ method).
+            reverse_rsd (bool, optional): Reverse redshift (rsd terms will be negative). (Default: False)
+            reverse_rsd2 (bool, optional): Reverse redshift for second field in cross-correlations (rsd terms negative). (Default: False)
 
         Returns:
             1D array (p_l(k)) for the multipole. If k is needed use self.k
@@ -594,6 +596,7 @@ class ComputeModelsCoLoRe(ReadCoLoRe):
 
         if rsd2 is None:
             rsd2 = rsd
+            reverse_rsd2 = reverse_rsd
 
         if n not in (0, 2, 4):  # pragma: no cover
             raise ValueError('multipole should be in (0, 2, 4', n)
@@ -625,6 +628,11 @@ class ComputeModelsCoLoRe(ReadCoLoRe):
         pk_cross_bias1  = self.get_theory_pk(z, bias=bias,  smooth_factor=smooth_factor_cross, tracer='dm')[1]
         pk_cross_bias2  = self.get_theory_pk(z, bias=bias2, smooth_factor=smooth_factor_cross, tracer='dm')[1]
 
+        if reverse_rsd and rsd:
+            rsd = -1
+        if reverse_rsd2 and rsd2:
+            rsd2 = -1
+
         if n==0:
             logger.debug('Returning monopole')
             return pk_l + (f**2/5)*rsd*rsd2*pk_rsd + (f/3)*(rsd2*pk_cross_bias1 + rsd*pk_cross_bias2)
@@ -636,7 +644,7 @@ class ComputeModelsCoLoRe(ReadCoLoRe):
             return (8*f**2/35)*rsd*rsd2*pk_rsd
 
 
-    def get_npole(self, n, z, rsd=True, bias=None, rsd2=None, bias2=None, smooth_factor=None, smooth_factor_rsd=None, smooth_factor_cross=None):
+    def get_npole(self, n, z, rsd=True, bias=None, rsd2=None, bias2=None, smooth_factor=None, smooth_factor_rsd=None, smooth_factor_cross=None, reverse_rsd=False, reverse_rsd2=False):
         ''' Get the theoretical multipole correlation according to the model. 
 
         Args:
@@ -649,13 +657,15 @@ class ComputeModelsCoLoRe(ReadCoLoRe):
             smooth_factor (float, optional): Smoothing prefactor for the lognormalized field dd (<delta_LN delta_LN>), as the 1.1 in "double rsm2_gg=par->r2_smooth+1.1*pow(par->l_box/par->n_grid,2)/12.". (Default: Value used in __init__ method).
             smooth_factor_rsd (float, optional): Smoothing prefactor for the matter matter field. <delta_L delta_L>. (Default: Value used in __init__ method).
             smooth_factor_cross (float, optional): Smoothing prefactor for the matter galaxy (dm) field. <delta_LN delta_L>. (Default: Value used in __init__ method).
-
+            reverse_rsd (bool, optional): Reverse redshift (rsd terms will be negative). (Default: False)
+            reverse_rsd2 (bool, optional): Reverse redshift for second field in cross-correlations (rsd terms negative). (Default: False)
+            
         Returns:
             1D array (xi_0(k)) for the multipole. If r is needed use self.r
         '''
         k = self.input_pk[0]
 
-        pkl = self.get_npole_pk(n=n, z=z, rsd=rsd, bias=bias, rsd2=rsd2, bias2=bias2, smooth_factor=smooth_factor, smooth_factor_rsd=smooth_factor_rsd, smooth_factor_cross=smooth_factor_cross)
+        pkl = self.get_npole_pk(n=n, z=z, rsd=rsd, bias=bias, rsd2=rsd2, bias2=bias2, smooth_factor=smooth_factor, smooth_factor_rsd=smooth_factor_rsd, smooth_factor_cross=smooth_factor_cross, reverse_rsd=reverse_rsd, reverse_rsd2=reverse_rsd2)
 
         _r, xil = P2xi(k, l=n)(pkl)
         
