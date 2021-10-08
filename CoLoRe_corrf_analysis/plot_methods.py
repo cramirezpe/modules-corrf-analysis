@@ -27,10 +27,11 @@ class Plots:
                          smooth_factor=fitter.out.params['smooth_factor'].value, 
                          smooth_factor_rsd=fitter.out.params['smooth_factor_rsd'].value, 
                          smooth_factor_cross=fitter.out.params['smooth_factor_cross'].value, 
-                         fitted_region=fitted_region, plot_args=plot_args)
+                         fitted_region=fitted_region, plot_args=plot_args,
+                         reverse_rsd=fitter.reverse_rsd, reverse_rsd2=fitter.reverse_rsd2)
            
     @staticmethod
-    def plot_theory(pole, z, theory, ax=None, plot_args=dict(), bias=None, bias2=None, smooth_factor=None, smooth_factor_rsd=None, smooth_factor_cross=None, rsd=True, rsd2=None, fitted_region=(0,301)):
+    def plot_theory(pole, z, theory, ax=None, plot_args=dict(), bias=None, bias2=None, smooth_factor=None, smooth_factor_rsd=None, smooth_factor_cross=None, rsd=True, rsd2=None, fitted_region=(0,301), reverse_rsd=False, reverse_rsd2=False):
         ''' Plot a given model in a given axis.
 
         Args:
@@ -46,6 +47,8 @@ class Plots:
             rsd (bool, optional): Whether to include RSD. (Default: True).
             rsd2 (bool, optional): Only for cross-correlations. Whether to include RSD for the second field. (Default: Same as rsd -> autocorrelation).
             fitted_region (tuple, optional): Mark fitted region (rfit_min, rfit_max) with solid line.
+            reverse_rsd (bool, optional): Reverse redshift (rsd terms will be negative). (Default: False)
+            reverse_rsd2 (bool, optional): Reverse redshift for second field in cross-correlations (rsd terms negative). (Default: False)
         '''
         if ax is None:
             fig, ax = plt.subplots()
@@ -54,7 +57,7 @@ class Plots:
         # if bias is None:
         #     bias = theory.bias(z)
 
-        xi_th = np.asarray(theory.get_npole(n=pole, z=z, bias=bias, bias2=bias2, rsd=rsd, rsd2=rsd2, smooth_factor=smooth_factor, smooth_factor_rsd=smooth_factor_rsd, smooth_factor_cross=smooth_factor_cross))
+        xi_th = np.asarray(theory.get_npole(n=pole, z=z, bias=bias, bias2=bias2, rsd=rsd, rsd2=rsd2, smooth_factor=smooth_factor, smooth_factor_rsd=smooth_factor_rsd, smooth_factor_cross=smooth_factor_cross, reverse_rsd=reverse_rsd, reverse_rsd2=reverse_rsd2))
 
         msk = theory.r < 301
         msk_fitted = theory.r > fitted_region[0]
