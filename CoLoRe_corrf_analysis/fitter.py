@@ -12,7 +12,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 class Fitter:
-    def __init__(self, boxes, z, poles, theory, rsd, rsd2=None, bias0=None, bias20=None, smooth_factor0=None, smooth_factor_rsd0=None, smooth_factor_cross0=None, rmin=None, rmax=None):
+    def __init__(self, boxes, z, poles, theory, rsd, rsd2=None, bias0=None, bias20=None, smooth_factor0=None, smooth_factor_rsd0=None, smooth_factor_cross0=None, rmin=None, rmax=None, reverse_rsd=False, reverse_rsd2=False):
         '''Fitter class used to fit bias and smooth_factors
         
         Args:
@@ -29,6 +29,8 @@ class Fitter:
             smooth_factor_cross0 (float, optional): Initial value for smooth_factor_cross. (Default: Use the one from ComputeModelsCoLoRe.__init__).
             rmin (dict, optional): Min r for the fits. (Default: {0:10, 2:40}, 10 for the monopole, 40 for the quadrupole).
             rmax (dict, optional): Max r for the fits. (Default: {0:200, 2:200}, 200 both for monopole and quadrupole).
+            reverse_rsd (bool, optional): Reverse redshift (rsd terms will be negative). (Default: False)
+            reverse_rsd2 (bool, optional): Reverse redshift for second field in cross-correlations (rsd terms negative). (Default: False)
         '''
         self.boxes  = boxes
         self.z      = z
@@ -36,6 +38,8 @@ class Fitter:
         
         self.rsd    = rsd
         self.rsd2   = rsd2
+        self.reverse_rsd = reverse_rsd
+        self.reverse_rsd2 = reverse_rsd2
         
         if self.rsd2 != None:
             logger.info('Second RSD provided. Cross-correlation mode enabled')
@@ -130,7 +134,7 @@ class Fitter:
         if not self.cross:
             bias2=None
 
-        xi = self.theory.get_npole(n=pole, z=self.z, bias=bias, bias2=bias2, rsd=self.rsd, rsd2=self.rsd2, smooth_factor=smooth_factor, smooth_factor_rsd=smooth_factor_rsd, smooth_factor_cross=smooth_factor_cross)
+        xi = self.theory.get_npole(n=pole, z=self.z, bias=bias, bias2=bias2, rsd=self.rsd, rsd2=self.rsd2, smooth_factor=smooth_factor, smooth_factor_rsd=smooth_factor_rsd, smooth_factor_cross=smooth_factor_cross, reverse_rsd=self.reverse_rsd, reverse_rsd2=self.reverse_rsd2)
         model_xi = interp1d(self.theory.r, xi)
         return model_xi(self.r)
 
