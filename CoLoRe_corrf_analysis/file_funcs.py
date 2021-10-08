@@ -183,8 +183,11 @@ class FileFuncs:
                                     sum_ += 1
                                 elif (sim_path / 'DD.dat').is_file():
                                     sum_ += 1
-                                elif show_incompleted:
-                                    print(sim_path.resolve())
+                                elif show_incompleted and (sim_path / 'run_corr.sl').is_file():
+                                    for file in sim_path.glob('*out'):
+                                        if file.is_file():
+                                            print(sim_path.resolve())
+                                            break
                         # print(f'nside: {nside_path.name[6:]}\t{rsd_path.name}\t{range_path.name}\t\t{zbin_path.name}\t\t{sims}')
                         t_rows.append((nside, rsd, rmin, rmax, N_bins, zmin, zmax, sum_))
 
