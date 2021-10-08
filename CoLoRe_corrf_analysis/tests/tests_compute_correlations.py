@@ -45,7 +45,7 @@ class TestComputeCorrelationsAuto(unittest.TestCase):
         zmin=0, zmax=10,
         zmin_covd=0.8, zmax_covd=1.5, zstep_covd=0.01,
         randoms_downsampling=1, data_downsampling=1, pixel_mask=None, nside=2,
-        log_level='DEBUG', compute_npoles=None, reverse_RSD=False,
+        log_level='DEBUG', compute_npoles=None, reverse_RSD=False, reverse_RSD2=False
     ) 
 
     def setUp(self):
@@ -128,7 +128,7 @@ class TestComputeCorrelationsCross(unittest.TestCase):
         zmin=0, zmax=10,
         zmin_covd=0.8, zmax_covd=1.5, zstep_covd=0.01,
         randoms_downsampling=1, data_downsampling=1, pixel_mask=None, nside=2,
-        log_level='DEBUG', compute_npoles=None, reverse_RSD=False,
+        log_level='DEBUG', compute_npoles=None, reverse_RSD=False, reverse_RSD2=False
     ) 
 
     def setUp(self):
@@ -277,7 +277,7 @@ class TestComputeCorrelationsReadCoLoRe(unittest.TestCase):
         zmin=0, zmax=10,
         zmin_covd=0.8, zmax_covd=1.5, zstep_covd=0.01,
         randoms_downsampling=1, data_downsampling=1, pixel_mask=None, nside=2,
-        log_level='DEBUG', compute_npoles=None, reverse_RSD=False,
+        log_level='DEBUG', compute_npoles=None, reverse_RSD=False, reverse_RSD2=False
     ) 
 
     def setUp(self):

@@ -162,6 +162,10 @@ def getArgs(): # pragma: no cover
         action='store_true',
         help='Reverse the effect of RSD')
 
+    parser.add_argument('--reverse-RSD2',
+        action='store_true',
+        help='Reverse the effect of RSD for field 2')
+
     parser.add_argument('--log-level', default='WARNING', choices=['CRITICAL', 'ERROR', 'WARNING', 'INFO', 'DEBUG', 'NOTSET'])
 
     args = parser.parse_args()
@@ -445,14 +449,14 @@ def main(args=None):
         data_to_use.add(data)
 
     if 'D2' in to_compute or args.generate_randoms2:
-        data2 = FieldData(args.data2, 'Data2', file_type=args.data2_format, rsd=not(args.data2_norsd), reverse_RSD=args.reverse_RSD)
+        data2 = FieldData(args.data2, 'Data2', file_type=args.data2_format, rsd=not(args.data2_norsd), reverse_RSD=args.reverse_RSD2)
         data2.prepare_data(args.zmin, args.zmax, args.data_downsampling, args.pixel_mask, args.nside)
         data2.compute_cov(f)
         data_to_use.add(data2)
     else:
         data2 = data
 
-    if 'R1' in to_compute:
+    if 'R1' in to_compute or ('R2' in to_compute and args.randoms == None and not args.generate_randoms2): 
         rand = FieldData(args.randoms, 'Randoms', file_type='zcat')
         if args.randoms != None:
             rand.prepare_data(args.zmin, args.zmax, args.randoms_downsampling, args.pixel_mask, args.nside)
@@ -489,7 +493,7 @@ def main(args=None):
         else:
             rand2 = rand
             data_to_use.add(rand2)
-    else:
+    elif 'R1' in to_compute:
         rand2 = rand
 
     bins2p=np.linspace(args.min_bin, args.max_bin, args.n_bins)
