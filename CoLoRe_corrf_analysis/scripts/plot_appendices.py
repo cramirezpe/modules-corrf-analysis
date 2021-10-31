@@ -95,7 +95,7 @@ def main(args=None):
             if True:
                 
                 ax.fill_between(term.rdata, term.rdata**2*(xi+xierr), term.rdata**2*(xi-xierr), facecolor=fill_c, alpha=0.7)
-                ax.plot(term.rdata, term.rdata**2*(xi+xierr), c=fill_c, lw=1, alpha=0.7)
+                ax.plot(term.rdata, term.rdata**2*(xi+xierr), c=fill_c, lw=1, alpha=0.7, label=label)
                 ax.plot(term.rdata, term.rdata**2*(xi-xierr), c=fill_c, lw=1, alpha=0.7)
             else:
                 ax.errorbar(box.savg, box.savg**2*xi, box.savg**2*xierr)
@@ -103,10 +103,10 @@ def main(args=None):
             _modelxi = term.model(pole)
             if iterm == 4:
                 fitted_region = term.rmodel > 10
-                ax.plot(term.rmodel, term.rmodel**2*_modelxi, c=c, lw=1, ls='--', label=label)
+                ax.plot(term.rmodel, term.rmodel**2*_modelxi, c=c, lw=1, ls='--')
                 ax.plot(term.rmodel[fitted_region], term.rmodel[fitted_region]**2*_modelxi[fitted_region], c=c, lw=1, ls='-')
             else:
-                ax.plot(term.rmodel, term.rmodel**2*_modelxi, c=c, lw=1, ls='--', label=label)
+                ax.plot(term.rmodel, term.rmodel**2*_modelxi, c=c, lw=1, ls='--')
             
         ax.set_xlim(-5, 200)
         ax.set_title(term_description[iterm], fontsize=25, pad=14)
