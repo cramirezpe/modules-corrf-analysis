@@ -96,12 +96,12 @@ def main(args=None):
     analyses = analyses_rsd + analyses_norsd
 
     ###############
-    # Possibility to hide warnings
+    # Possibility to hide warnings from mcfit
     ###############
-    if False:
-        logger.info('Warnings will be disabled')
+    if True:
+        logger.info('Warnings for mcfit will be disabled')
         import warnings
-        warnings.filterwarnings('ignore')
+        warnings.filterwarnings( "ignore", module = "mcfit\..*" )
 
     ###############
     # Perform the fit for noRSD values

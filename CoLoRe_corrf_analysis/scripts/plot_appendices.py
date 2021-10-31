@@ -34,10 +34,10 @@ def main(args=None):
     ###############
     # Possibility to hide warnings
     ###############
-    if False:
-        logger.info('Warnings will be disabled')
+    if True:
+        logger.info('Warnings for mcfit will be disabled')
         import warnings
-        warnings.filterwarnings('ignore')
+        warnings.filterwarnings( "ignore", module = "mcfit\..*" )
 
     ###############
     # Generating all terms
