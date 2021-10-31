@@ -6,7 +6,7 @@ logger = logging.getLogger(__name__)
 
 class Plots:
     @classmethod
-    def plot_best_fit(cls, fitter, pole, ax=None, plot_args=dict()):
+    def plot_best_fit(cls, fitter, pole, ax=None, plot_args=dict(), no_labels=False):
         '''
         fitter (module_files_plots.Fitter object): Fitter object storing the fit we want to plot results of.
         pole (int): Multipole we want to plot.
@@ -28,10 +28,10 @@ class Plots:
                          smooth_factor_rsd=fitter.out.params['smooth_factor_rsd'].value, 
                          smooth_factor_cross=fitter.out.params['smooth_factor_cross'].value, 
                          fitted_region=fitted_region, plot_args=plot_args,
-                         reverse_rsd=fitter.reverse_rsd, reverse_rsd2=fitter.reverse_rsd2)
+                         reverse_rsd=fitter.reverse_rsd, reverse_rsd2=fitter.reverse_rsd2, no_labels=no_labels)
            
     @staticmethod
-    def plot_theory(pole, z, theory, ax=None, plot_args=dict(), bias=None, bias2=None, smooth_factor=None, smooth_factor_rsd=None, smooth_factor_cross=None, rsd=True, rsd2=None, fitted_region=(0,301), reverse_rsd=False, reverse_rsd2=False):
+    def plot_theory(pole, z, theory, ax=None, plot_args=dict(), bias=None, bias2=None, smooth_factor=None, smooth_factor_rsd=None, smooth_factor_cross=None, rsd=True, rsd2=None, fitted_region=(0,301), reverse_rsd=False, reverse_rsd2=False, no_labels=False):
         ''' Plot a given model in a given axis.
 
         Args:
@@ -69,8 +69,9 @@ class Plots:
 
         ax.plot(theory.r[msk], (theory.r[msk])**2*xi_th[msk], **dashed_plot_args)
         ax.plot(theory.r[msk_fitted], theory.r[msk_fitted]**2*xi_th[msk_fitted], **plot_args)
-        ax.set_xlabel(r'$r \, [{\rm Mpc/h}]$')
-        ax.set_ylabel(r'$r^2 \xi(r)$')
+        if not no_labels:
+            ax.set_xlabel(r'$r \, [{\rm Mpc/h}]$')
+            ax.set_ylabel(r'$r^2 \xi(r)$')
 
     @staticmethod
     def get_xi(pole, boxes):
@@ -85,10 +86,11 @@ class Plots:
         xis = np.array( [box.compute_npole(pole, ) for box in boxes] ) 
         xi = xis.mean(axis=0)
         xierr = xis.std(axis=0, ddof=1)/np.sqrt(len(boxes))
+        # xierr = xis.std(axis=0) # This is the same error that David uses.
         return xi, xierr
 
     @classmethod
-    def plot_data(cls, pole, boxes, ax=None, plot_args=dict(), delta_r=0):
+    def plot_data(cls, pole, boxes, ax=None, plot_args=dict(), delta_r=0, shaded_errors=False, no_labels=False):
         '''Plot data for the given boxes in an axis.
         
         Args:
@@ -101,14 +103,21 @@ class Plots:
         if ax is None:
             fig, ax = plt.subplots()
         
-        plot_args = { **dict(fmt='.', c='C0'), **plot_args}
         xi, xierr = cls.get_xi(pole, boxes)
 
         box = boxes[0]
         if delta_r != 0:
             delta_r = delta_r*np.diff(box.savg)
             delta_r = np.append(delta_r, delta_r[-1])
-        ax.errorbar(box.savg+delta_r, box.savg**2*xi, box.savg**2*xierr, **plot_args)      
+        if shaded_errors:
+            if delta_r != 0:
+                raise ValueError('delta_r incompatible with shaded erros')
+            else:
+                ax.fill_between(box.savg, box.savg**2*(xi + xierr), box.savg**2*(xi-xierr), facecolor='#AAAAAA')
+        else:
+            plot_args = { **dict(fmt='.', c='C0'), **plot_args}
+            ax.errorbar(box.savg+delta_r, box.savg**2*xi, box.savg**2*xierr, **plot_args)      
         
-        ax.set_xlabel(r'$r \, [{\rm Mpc/h}]$')
-        ax.set_ylabel(r'$r^2 \xi(r)$')
+        if not no_labels:
+            ax.set_xlabel(r'$r \, [{\rm Mpc/h}]$')
+            ax.set_ylabel(r'$r^2 \xi(r)$')

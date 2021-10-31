@@ -63,11 +63,26 @@ class Term:
             _xi, _xierr = self.datadict[pole]
         else:
             _xi, _xierr = Plots.get_xi(pole=pole, boxes=self.boxes)
+            self.datadict[pole] = (_xi, _xierr)
         return _xi, _xierr
+
+    def xi_per_pixel(self, pole):
+        xis = np.array( [box.compute_npole(pole, ) for box in self.boxes] )
+        return xis
     
     def model(self, pole):
         _xi = self.theory.get_npole(n=pole, z=self.z, rsd=self.rsd1, bias=self.bias1, rsd2=self.rsd2, bias2=self.bias2, reverse_rsd=self.rsd1_rev, reverse_rsd2=self.rsd2_rev)
-        return _xi        
+        return _xi
+
+    def best_fit(self, pole, fitter):
+        bias = fitter.out.params['bias']
+        if self.rsd2 != None:
+            bias2 = fitter.out.params['bias2']
+        else: 
+            bias2 = None
+        _xi = self.theory.get_npole(n=pole, z=self.z, rsd=self.rsd1, bias=bias, rsd2=self.rsd2, bias2=bias2, reverse_rsd=self.rsd1_rev, reverse_rsd2=self.rsd2_rev)
+        return _xi
+        
     
     @cached_property
     def rdata(self):
@@ -109,26 +124,44 @@ class MixedTerm(Term):
                 self.label += '-'+'-'.join(map(str, self.negative))
         else:
             self.label=label
+
+        self.datadict = dict()
     
     @cached_property
     def rdata(self):
         return self.positive[0].rdata
 
     def data(self, pole):
-        _dataxi = np.zeros_like(self.rdata)
-        _dataxierr = np.zeros_like(self.rdata)
+        if pole in self.datadict.keys():
+            _xi, _xierr = self.datadict[pole]
+        else:
+            _npixels = len(self.positive[0].boxes)
+            _nrdata = len(self.rdata)
+            xis = np.zeros((_npixels, _nrdata))
 
+            for _item in self.positive:
+                xis += _item.xi_per_pixel(pole)
+            for _item in self.negative:
+                xis -= _item.xi_per_pixel(pole)
+
+            _xi = xis.mean(axis=0)
+            _xierr = xis.std(axis=0, ddof=1)/np.sqrt(_npixels)
+
+            self.datadict[pole] = (_xi, _xierr)
+        
+        return _xi, _xierr
+
+    def xi_per_pixel(self, pole):
+        _npixels = len(self.positive[0].boxes)
+        _nrdata = len(self.rdata)
+        xis = np.zeros((_npixels, _nrdata))
+        
         for _item in self.positive:
-            _xi, _xierr = _item.data(pole)
-            _dataxi += _xi
-            _dataxierr += _xierr**2
+            xis += _item.xi_per_pixel(pole)
         for _item in self.negative:
-            _xi, _xierr = _item.data(pole)
-            _dataxi -= _xi
-            _dataxierr += _xierr**2
-        _dataxierr = np.sqrt(_dataxierr)
+            xis -= _item.xi_per_pixel(pole)
 
-        return _dataxi, _dataxierr
+        return xis
 
     def model(self, pole):
         _modelxi = np.zeros_like(self.rmodel)
@@ -294,8 +327,10 @@ class TermsPlots:
             _modelxi = term.model(pole)
 
             ax.plot(term.rmodel, term.rmodel**2*_modelxi, c=ci, **args)
+            _label = args['label']
             args.pop('label')
             ax.errorbar(term.rdata, term.rdata**2*_dataxi, term.rdata**2*_dataxierr, c=ci, fmt='.', **args)
+            args['label'] = _label
 
 
     @staticmethod
