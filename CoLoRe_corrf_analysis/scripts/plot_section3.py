@@ -9,6 +9,9 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 import numpy as np
 import matplotlib
+from matplotlib import rc
+rc('font', **{'family': 'sans-serif', 'sans-serif': ['Helvetica']})
+rc('text', usetex=True)
 import sys
 
 logger = logging.getLogger(__name__)
@@ -135,7 +138,7 @@ def main(args=None):
     # Plot
     ############
     logger.info('Starting plot')
-    matplotlib.rcParams.update({'font.size': 18})
+    matplotlib.rcParams.update({'font.size': 25})
     fig, axs = plt.subplots(2,2, sharey='row', sharex=True, figsize=(15,10))
 
     pole=0
@@ -169,7 +172,7 @@ def main(args=None):
             
             # Plot model
             # ----------
-            label = 'Monopole' if pole == 0 else 'Quadrupole'
+            label = r'${\rm Monopole}$' if pole == 0 else r'${\rm Quadrupole}$'
             Plots.plot_best_fit(fitter=analysis.fitter, pole=pole, ax=ax,
                         plot_args=dict(c=c, lw=1, label=label), no_labels=True)
             # ----------
@@ -178,19 +181,19 @@ def main(args=None):
         ax.grid(zorder=-1)
 
     #plt.ylabel(r'$r^2 \xi(r)$')
-    axs[0].set_title('low-z')#r'$z \in ({}-{})$'.format(0.5, 0.7))
-    axs[1].set_title('high-z')#r'$z \in ({}-{})$'.format(0.7, 0.9))
+    axs[0].set_title(r'${\rm low-z}$')#r'$z \in ({}-{})$'.format(0.5, 0.7))
+    axs[1].set_title(r'${\rm high-z}$')#r'$z \in ({}-{})$'.format(0.7, 0.9))
 
     axs[1].yaxis.set_label_position("right")
-    axs[1].set_ylabel('Real space', labelpad=28, rotation=-90)
+    axs[1].set_ylabel(r'${\rm Real ~ space}$', labelpad=28, rotation=-90)
     axs[3].yaxis.set_label_position("right")
-    axs[3].set_ylabel('Redshift space', labelpad=28, rotation=-90)
+    axs[3].set_ylabel(r'${\rm Redshift ~ space}$', labelpad=28, rotation=-90)
 
     handles, labels = axs[3].get_legend_handles_labels()
     axs[0].legend(handles, labels)
 
-    fig.supylabel(r'$r^2 \, \xi(r) \, {\rm [Mpc/h]^2}$', x=0.03)
-    fig.supxlabel(r'$r \, {\rm [Mpc/h]}$', y=0.03)
+    fig.supylabel(r'$r^2 \, \xi(r) \, {\rm [(Mpc/h){^2}]}$', x=0.06)
+    fig.supxlabel(r'$r \, {\rm [Mpc/h]}$', y=0.005)
     plt.subplots_adjust(wspace=0.05, hspace=0.1)
 
     plt.savefig(args.output_file)
