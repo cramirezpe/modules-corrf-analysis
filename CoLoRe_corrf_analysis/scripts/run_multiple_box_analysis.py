@@ -17,7 +17,7 @@ def main():
 
     parser.add_argument('--path-to-boxes',
         type=Path,
-        default=Path('/global/cscratch1/sd/cramirez/NBodyKit/hanyu_david_box/binned_analysis_with_error'),
+        default=Path('/global/project/projectdirs/desi/users/cramirez/CoLoRe_analysis/NbodyKit/multibias2_0.5_4//hanyu_david_box/binned_analysis_with_error'),
         help='Path to corrfunc results (default: current boxes)',
     )
 

@@ -259,22 +259,22 @@ class CombineTerms:
     
 class AndreuTerms:
     @staticmethod
-    def create_term(get_boxes_kwargs, get_theory_kwargs, label, source1, source2, rsd1, rsd2, bias1, bias2, rsd1_rev=False, rsd2_rev=False, basedir=Path(f'/global/cscratch1/sd/cramirez/NBodyKit/multibias2_0.5_4/')):
+    def create_term(get_boxes_kwargs, get_theory_kwargs, label, source1, source2, rsd1, rsd2, bias1, bias2, rsd1_rev=False, rsd2_rev=False, basedir=Path(f'/global/project/projectdirs/desi/users/cramirez/CoLoRe_analysis/NbodyKit/multibias2_0.5_4/multibias2_0.5_4/')):
         term = Term(basedir, label, source1, source2, rsd1, rsd2, rsd1_rev, rsd2_rev, bias1, bias2)
         term.get_boxes(**get_boxes_kwargs)
         term.get_theory(**get_theory_kwargs)
         return term
 
     @classmethod
-    def create_Andreu_terms(cls, basedir=Path(f'/global/cscratch1/sd/cramirez/NBodyKit/multibias2_0.5_4/'), 
+    def create_Andreu_terms(cls, basedir=Path(f'/global/project/projectdirs/desi/users/cramirez/CoLoRe_analysis/NbodyKit/multibias2_0.5_4/'), 
                                          get_boxes_kwargs=dict(rmin=0.1, rmax=200, N_bins=41, zmin=0.5, zmax=0.7, nside=2, force_path=None),
                                          get_theory_kwargs=dict(
                                              box_path=Path('/global/cscratch1/sd/damonge/CoLoRe_sims/sim1000'),
                                              source=2,
-                                             nz_filename=Path('/global/cscratch1/sd/cramirez/NBodyKit/hanyu_david_box/input_files/NzBlue.txt'),
-                                             pk_filename=Path('/global/cscratch1/sd/cramirez/NBodyKit/hanyu_david_box/input_files/Pk_CAMB_test.dat'),
+                                             nz_filename=Path('/global/project/projectdirs/desi/users/cramirez/CoLoRe_analysis/NbodyKit/hanyu_david_box/input_files/NzBlue.txt'),
+                                             pk_filename=Path('/global/project/projectdirs/desi/users/cramirez/CoLoRe_analysis/NbodyKit/hanyu_david_box/input_files/Pk_CAMB_test.dat'),
                                              param_cfg_filename=Path('/global/cscratch1/sd/damonge/CoLoRe_sims/sim1000/out_params.cfg'),
-                                             bias_filename=Path('/global/cscratch1/sd/cramirez/NBodyKit/hanyu_david_box/input_files/BzBlue.txt'),
+                                             bias_filename=Path('/global/project/projectdirs/desi/users/cramirez/CoLoRe_analysis/NbodyKit/hanyu_david_box/input_files/BzBlue.txt'),
                                              apply_lognormal=True,
                                          ),
                                          biases_dict={1:0, 4:1, 5:2},
