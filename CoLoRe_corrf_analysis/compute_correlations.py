@@ -543,6 +543,9 @@ def main(args=None):
     if logging.root.level <= logging.DEBUG: # pragma: no cover
         logger.debug(f'Relative ellapsed time: {time.time() - start_computation}')
 
+    np.savetxt(args.out_dir / 'N_data.dat', [len(i) for i in (data, data2)])
+    np.savetxt(args.out_dir / 'N_rand.dat', [len(i) for i in (rand, rand2)])
+
     if args.compute_npoles != None: # pragma: no cover
         logger.info(f'Computing npoles:')
         CFComp = CFComputations(args.out_dir,  N_data_rand_ratio=1)
@@ -550,8 +553,6 @@ def main(args=None):
             logger.info(f'\tnpole {pole}')
             _ = CFComp.compute_npole(pole)
 
-    np.savetxt(args.out_dir / 'N_data.dat', [len(i) for i in (data, data2)])
-    np.savetxt(args.out_dir / 'N_rand.dat', [len(i) for i in (rand, rand2)])
 
 def hhz(z):
     om=0.3147
