@@ -297,8 +297,6 @@ class FieldData:
             self.data['DEC'] = np.degrees(np.arcsin(2.*(ran2-0.5)))
 
             return
-        else:
-            raise ValueError('Code to generate pixel_mask not yet working')
 
         _lambda = NRAND / len(pixel_mask)
         randoms_per_pixel = np.random.poisson(_lambda, len(pixel_mask))
@@ -551,6 +549,9 @@ def main(args=None):
         for pole in args.compute_npoles:
             logger.info(f'\tnpole {pole}')
             _ = CFComp.compute_npole(pole)
+
+    np.savetxt(args.out_dir / 'N_data.dat', [len(i) for i in (data, data2)])
+    np.savetxt(args.out_dir / 'N_rand.dat', [len(i) for i in (rand, rand2)])
 
 def hhz(z):
     om=0.3147

@@ -121,7 +121,7 @@ class FileFuncs:
         return available_pixels
 
     @classmethod
-    def mix_sims(cls, path, boxes=None, pixels=None, data_rand_ratio=1):
+    def mix_sims(cls, path, boxes=None, pixels=None, data_rand_ratio=None):
         '''Method to create a CFComputations object for each of the available pixels in one or more boxes.
         
         Args:

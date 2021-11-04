@@ -13,7 +13,7 @@ class CFComputations:
     'formats': ('<f8', '<f8', '<f8', '<f8', '<f8', '<f8')
     }
 
-    def __init__(self, results_path, N_data_rand_ratio, label=''):
+    def __init__(self, results_path, N_data_rand_ratio=None, label=''):
         '''Class to handle results from corrfunc and compute multipoles.
         
         Args:
@@ -22,8 +22,13 @@ class CFComputations:
             label (str, optional): Label the results object. (Default: '').
             '''
         self.results_path = results_path
-        self.N_data = 1
-        self.N_rand = 1/N_data_rand_ratio
+        if N_data_rand_ratio is None:
+            self.N_data = np.loadtxt(self.results_path/'N_data.dat')[0]
+            self.N_rand = np.loadtxt(self.results_path/'N_rand.dat')[0]
+        else:
+            self.N_data = 1
+            self.N_rand = 1/N_data_rand_ratio
+            
         self.label = label
                
     def __str__(self): # pragma: no cover
