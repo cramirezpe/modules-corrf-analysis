@@ -20,7 +20,8 @@ import json
 from CoLoRe_corrf_analysis.cf_helper import CFComputations
 from CoLoRe_corrf_analysis.file_funcs import FileFuncs
 
-version='0.12'
+version='0.99'
+
 logger = logging.getLogger(__name__)
 
 def getArgs(): # pragma: no cover
@@ -89,6 +90,7 @@ def getArgs(): # pragma: no cover
 
     parser.add_argument('--randoms-factor',
         default=1,
+        type=float,
         help='Modify the quantity of generated randoms by this factor.')
 
     parser.add_argument("--out-dir",
@@ -310,7 +312,7 @@ class FieldData:
         pixarea = hp.pixelfunc.nside2pixarea(nside, degrees=True)
         pixels = len(pixel_mask) if pixel_mask is not None else 48
         area = pixarea*pixels
-        NRAND = int(quad(n, zmin, zmax)[0]*area)
+        NRAND = int(quad(n, zmin, zmax)[0]*area*factor)
         self.define_data_from_size(NRAND)
 
         logger.debug('Generating random numbers')
@@ -333,7 +335,7 @@ class FieldData:
 
         z_gen = interp1d(p, z_sort)
 
-        NRAND = len(self.data)
+        NRAND = int(len(self.data)*factor)
         logger.info('Interpolating redshift')
         ran1 = np.random.random(NRAND)
         self.data['Z'] = z_gen(ran1)
@@ -396,6 +398,7 @@ class FieldData:
                 new_THs = np.arccos( np.cos(th_range[0]) - ran2*( np.cos(th_range[0])-np.cos(th_range[1]) ) )
                 new_pixels = hp.pixelfunc.ang2pix(nside, new_THs, new_PHs)
                 mask = new_pixels == pixel
+                new_PHs[new_PHs<0] += 2*np.pi
                 THs = np.append(THs, new_THs[mask])
                 PHs = np.append(PHs, new_PHs[mask])        
 
@@ -558,7 +561,7 @@ def main(args=None):
         elif args.generate_randoms2: # pragma: no cover
             rand2 = FieldData(args.randoms2, 'Randoms2', file_type='zcat')
             if args.randoms_from_nz_file != None:
-                rand2.generate_random_redshifts_from_file(args.randoms_from_nz_file, zmin=args.zmin, zmax=args.zmax)
+                rand2.generate_random_redshifts_from_file(args.randoms_from_nz_file, zmin=args.zmin, zmax=args.zmax, factor=args.randoms_factor, pixel_mask=args.pixel_mask, nside=args.nside)
             else:
                 rand2.define_data_from_size(len(data2.data))
                 rand2.generate_random_redshifts_from_data(data2, factor=args.randoms_factor)
@@ -631,7 +634,7 @@ def main(args=None):
 
     if args.compute_npoles != None: # pragma: no cover
         logger.info(f'Computing npoles:')
-        CFComp = CFComputations(args.out_dir,  N_data_rand_ratio=1)
+        CFComp = CFComputations(args.out_dir)
         for pole in args.compute_npoles:
             logger.info(f'\tnpole {pole}')
             _ = CFComp.compute_npole(pole)
