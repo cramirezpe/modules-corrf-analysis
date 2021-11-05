@@ -1,3 +1,4 @@
+import json
 import unittest
 from pathlib import Path
 from shutil import rmtree
@@ -72,7 +73,12 @@ class TestComputeCorrelationsAuto(unittest.TestCase):
 
         np.testing.assert_equal((DD,DR,RR), (DD_target, DR_target, RR_target))   
 
-    @unittest.skip("Randoms are not properly generated when pixel mask acts")
+        with open(self.out_dir / 'sizes.json') as json_file:
+            sizes = json.load(json_file)
+
+        for field, value in zip(('Data', 'Randoms'), (22123, 1032)):
+            self.assertEqual(sizes[field], value)
+
     @patch('numpy.random.choice', side_effect=mock_choice)
     @patch('numpy.random.poisson', side_effect=mock_random_poisson)
     @patch('numpy.random.randint', side_effect=mock_random_int)
@@ -202,6 +208,21 @@ class TestComputeCorrelationsCross(unittest.TestCase):
 
 class TestComputeRandoms(unittest.TestCase):
     @patch('numpy.random.random', side_effect=mock_random_random)
+    def test_random_redshfits_from_data(self, random_mock):
+        cat = Path(__file__).parent / 'test_files' / 'catalogues' / 's4_rsd.fits'
+        data = compute_correlations.FieldData(cat=[cat], label='data', file_type='zcat', rsd=True)
+        data.prepare_data(zmin=0, zmax=10, downsampling=1, pixel_mask=None, nside=2)
+        
+        rand = compute_correlations.FieldData(cat=None, label=None, file_type=None)
+        rand.define_data_from_size(1000)
+        rand.generate_random_redshifts_from_data(data)
+
+        target = np.loadtxt(Path(__file__).parent / 'test_files' / 'randoms' / 'target_values' / 'target_zs_from_data.dat')
+
+        np.testing.assert_equal(rand.data['Z'], target)
+
+
+    @patch('numpy.random.random', side_effect=mock_random_random)
     def test_random_redshifts_from_nz_file(self, random_mock):
         rand = compute_correlations.FieldData(cat=None, label=None, file_type=None)
         nz_file = Path(__file__).parent / 'test_files' / 'randoms' / 'NzRed.txt'
@@ -225,7 +246,6 @@ class TestComputeRandoms(unittest.TestCase):
 
         np.testing.assert_equal(rand.data['Z'], target)
 
-    @unittest.skip("Ranodm positions not properly generated")
     @patch('numpy.random.random', side_effect=mock_random_random)
     def test_random_positions(self, random_mock):
         rand = compute_correlations.FieldData(cat=None, label=None, file_type=None)
@@ -253,7 +273,6 @@ class TestComputeRandoms(unittest.TestCase):
         dec_target = np.loadtxt(target_folder / 'target_dec2.dat')
 
         np.testing.assert_equal( (rand.data['RA'], rand.data['DEC']), (ra_target, dec_target))
-
 
 class TestComputeCorrelationsReadCoLoRe(unittest.TestCase):
     files_path = Path(__file__).parent / 'test_files' / 'correlations'

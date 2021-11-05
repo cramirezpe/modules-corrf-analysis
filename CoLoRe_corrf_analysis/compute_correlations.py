@@ -14,6 +14,7 @@ import scipy.integrate as integrate
 from astropy.io import fits
 from Corrfunc.mocks.DDsmu_mocks import DDsmu_mocks
 from scipy import interpolate
+import json
 
 from CoLoRe_corrf_analysis.cf_helper import CFComputations
 from CoLoRe_corrf_analysis.file_funcs import FileFuncs
@@ -342,7 +343,7 @@ class FieldData:
             self.data['DEC'][_index:_index+int(N)] = 90  - np.degrees(THs[:int(N)])
             _index+=N
 
-    def store_data_in_cat(self, filename):
+    def store_data_in_cat(self, filename): # pragma: no cover
         logger.info(f'Writting catalogue {self.label} into {filename}')
         values = (self.data['RA'], self.data['DEC'], self.data['Z'])
         labels = ('RA', 'DEC', 'Z')
@@ -417,7 +418,7 @@ def main(args=None):
     # Logic for which fields I need to incorporate
     available_counts = FileFuncs.get_available_count_files(args.out_dir)
     to_compute = set()
-    if args.data2 != None:
+    if args.data2 != None: # Cross-correlation
         if 'DD' not in available_counts:
             to_compute.add('D1')
             to_compute.add('D2')
@@ -433,11 +434,16 @@ def main(args=None):
         if 'DR' not in available_counts:
             to_compute.add('R2')
             to_compute.add('D1')
-    else:
+    else: # Auto-correlation
         to_compute.add('D1')
         if ('RR' not in available_counts) or ('DR' not in available_counts):
             to_compute.add('R1')
 
+    if (args.out_dir / 'sizes.json').is_file():
+        with open(args.out_dir / 'sizes.json') as json_file:
+            sizes = json.load(json_file)
+    else:
+        sizes = dict()
 
     data_to_use = set()
     if 'D1' in to_compute:
@@ -446,7 +452,7 @@ def main(args=None):
         data.compute_cov(f)
         data_to_use.add(data)
 
-    if 'D2' in to_compute or args.generate_randoms2:
+    if 'D2' in to_compute or args.generate_randoms2: # @ fix this. I could get randoms from dndz
         data2 = FieldData(args.data2, 'Data2', file_type=args.data2_format, rsd=not(args.data2_norsd), reverse_RSD=args.reverse_RSD2)
         data2.prepare_data(args.zmin, args.zmax, args.data_downsampling, args.pixel_mask, args.nside)
         data2.compute_cov(f)
@@ -504,8 +510,12 @@ def main(args=None):
     text=''
     for obj in data_to_use:
         text+="\n{}\n\t{}".format(obj.label, "\n\t".join([str(cat) for cat in obj.cat]))
+        sizes[obj.label] = len(obj.data)
 
     info_file.write_text(text)
+
+    with open(args.out_dir / 'sizes.json', 'w') as json_file:
+        json.dump(sizes, json_file)
 
     if 'DD' not in available_counts:
         logger.info('Computing DD...')
@@ -543,8 +553,8 @@ def main(args=None):
     if logging.root.level <= logging.DEBUG: # pragma: no cover
         logger.debug(f'Relative ellapsed time: {time.time() - start_computation}')
 
-    np.savetxt(args.out_dir / 'N_data.dat', [len(i) for i in (data, data2)])
-    np.savetxt(args.out_dir / 'N_rand.dat', [len(i) for i in (rand, rand2)])
+    np.savetxt(args.out_dir / 'N_data.dat', [len(i.data) for i in (data, data2)])
+    np.savetxt(args.out_dir / 'N_rand.dat', [len(i.data) for i in (rand, rand2)])
 
     if args.compute_npoles != None: # pragma: no cover
         logger.info(f'Computing npoles:')

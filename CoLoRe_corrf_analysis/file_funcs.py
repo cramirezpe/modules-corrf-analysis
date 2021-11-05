@@ -85,7 +85,7 @@ class FileFuncs:
             in_file = in_path / f'0_{in_counts}.dat'
         elif (in_path / f'{in_counts}.dat').is_file():
             in_file = in_path / f'{in_counts}.dat'
-        else:
+        else: # pragma: no cover
             raise ValueError("Couldn't find input file in", in_path)
         
         shutil.copy(in_file, out_path / f'{out_counts}.dat')
@@ -121,14 +121,13 @@ class FileFuncs:
         return available_pixels
 
     @classmethod
-    def mix_sims(cls, path, boxes=None, pixels=None, data_rand_ratio=None):
+    def mix_sims(cls, path, boxes=None, pixels=None):
         '''Method to create a CFComputations object for each of the available pixels in one or more boxes.
         
         Args:
             path (Path): Path to the boxes. It can be obtained for auto-correlations using cls.get_full_path.
             boxes (array, optional): Array of the boxes we want to include. (Default: All boxes available).
             pixels (array, optional): Array of pixels we want to include. (Default: All available pixels).
-            data_rand_ratio (float, optional): Ratio data/randoms. (Default: 1).
 
         Returns:
             1D array of CFComputations objects. 
@@ -145,7 +144,7 @@ class FileFuncs:
 
         output = []
         for _boxpath in paths:
-            output.append( CFComputations(_boxpath, N_data_rand_ratio=data_rand_ratio) )
+            output.append( CFComputations(_boxpath) )
         return output
 
     @staticmethod

@@ -1,6 +1,8 @@
+import json
 import logging
 import numpy as np
 from pathlib import Path
+import warnings
 
 from functools import cached_property
 from Corrfunc.utils import convert_3d_counts_to_cf
@@ -13,21 +15,26 @@ class CFComputations:
     'formats': ('<f8', '<f8', '<f8', '<f8', '<f8', '<f8')
     }
 
-    def __init__(self, results_path, N_data_rand_ratio=None, label=''):
+    def __init__(self, results_path, label=''):
         '''Class to handle results from corrfunc and compute multipoles.
         
         Args:
             results_path (Path): Path to the results from corrfunc.
-            N_data_rand_ratio (float): Ratio data/randoms.
             label (str, optional): Label the results object. (Default: '').
             '''
         self.results_path = results_path
-        if N_data_rand_ratio is None:
-            self.N_data = np.loadtxt(self.results_path/'N_data.dat')[0]
-            self.N_rand = np.loadtxt(self.results_path/'N_rand.dat')[0]
-        else:
-            self.N_data = 1
-            self.N_rand = 1/N_data_rand_ratio
+
+        try:
+            with open(self.results_path / 'sizes.json') as json_file:
+                self.sizes = json.load(json_file)
+        except OSError:
+            warnings.warn('Trying to read sizes json file failed. This may happen when running analysis on previous corrfunc runs. Setting all datas/randoms to the same size.')
+            self.sizes = dict(Data=1, Randoms=1)
+
+        if 'Data2' not in self.sizes:
+            self.sizes['Data2'] = self.sizes['Data']
+        if 'Randoms2' not in self.sizes:
+            self.sizes['Randoms2'] = self.sizes['Randoms']
             
         self.label = label
                
@@ -83,7 +90,7 @@ class CFComputations:
         
     @cached_property
     def cf(self):
-        return convert_3d_counts_to_cf(self.N_data, self.N_data, self.N_rand, self.N_rand, 
+        return convert_3d_counts_to_cf(self.sizes['Data'], self.sizes['Data2'], self.sizes['Randoms'], self.sizes['Randoms2'], 
                                           self.DD, self.DR, self.RD, self.RR)
 
     @cached_property
