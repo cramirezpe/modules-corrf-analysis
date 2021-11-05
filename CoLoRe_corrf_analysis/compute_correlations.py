@@ -14,6 +14,7 @@ import scipy.integrate as integrate
 from astropy.io import fits
 from Corrfunc.mocks.DDsmu_mocks import DDsmu_mocks
 from scipy import interpolate
+import shutil
 import json
 
 from CoLoRe_corrf_analysis.cf_helper import CFComputations
@@ -625,8 +626,8 @@ def main(args=None):
     if logging.root.level <= logging.DEBUG: # pragma: no cover
         logger.debug(f'Relative ellapsed time: {time.time() - start_computation}')
 
-    np.savetxt(args.out_dir / 'N_data.dat', [len(i.data) for i in (data, data2)])
-    np.savetxt(args.out_dir / 'N_rand.dat', [len(i.data) for i in (rand, rand2)])
+    if data==data2 and 'RD' not in available_counts:
+        shutil.copyfile(args.out_dir / f'DR.dat', args.out_dir / f'RD.dat')
 
     if args.compute_npoles != None: # pragma: no cover
         logger.info(f'Computing npoles:')
