@@ -177,7 +177,23 @@ def getArgs(): # pragma: no cover
     return args
 
 class FieldData:
+    ''' FieldData class used to store data fields (Data and Randoms)
+    
+    It is used to read from input files, compute randoms, apply masks...
+    '''
     def __init__(self, cat, label, file_type, rsd=False, reverse_RSD=False):
+        '''
+        Args:
+            cat (array of str or Path): Input data to read, they can be CoLoRe files or
+                drq catalogues (defined in file_type).
+            label (str): Label to identify the class.
+            file_type (str): Input type. Options:
+                - "CoLoRe": CoLoRe srcs output files.
+                - "zcat": fits file with the fields "Z", "RA" and "DEC" in the first header.
+            rsd (bool, optional): Whether to include RSD in data (only for CoLoRe). (Default: False).
+            reverse_RSD (bool, optional): Whether to reverse the effect of RSD (only for CoLoRe).
+                (Default: False)
+        '''
         self.cat   = cat
         self.label  = label
         self.file_type = file_type
@@ -192,6 +208,7 @@ class FieldData:
 
     @property
     def zfield(self):
+        ''' The zfield to read from input data is different depending on the file_type.'''
         if self.file_type == 'zcat':
             return 'Z'
         elif self.file_type == 'CoLoRe':
@@ -201,6 +218,7 @@ class FieldData:
         self.fits = fits.open(self.cat[imock])
 
     def define_data_from_fits(self):
+        ''' Method to define the data structure by reading input fits files.'''
         _cat_length = 0
         for i in range(len(self.cat)):
             self.open_fits(i)
@@ -208,14 +226,11 @@ class FieldData:
         self.data = np.empty(_cat_length,dtype=[('RA','f8'),('DEC','f8'),('Z','f8'),('Weight','f8')])
 
     def define_data_from_size(self, N):
+        ''' Method to define the data structure by its length.'''
         self.data = np.empty(N,dtype=[('RA','f8'),('DEC','f8'),('Z','f8'),('Weight','f8')])
 
     def fill_data(self):
-        ''' Fill the data arrays from the input source.
-
-        Args:
-            zfield (str, optional): Field name for redshift. (Default: Z).
-        '''
+        ''' Fill the data arrays from the input source.'''
         _index = 0
         for i in range(len(self.cat)):
             self.open_fits(i)
@@ -232,20 +247,35 @@ class FieldData:
             _index += _file_size
 
     def apply_downsampling(self, downsampling): # pragma: no cover
+        '''Method to apply downsampling to data.
+        
+        Args:
+            downsampling (float): downsampling to apply (1 to keep all data)''' 
         _mask = np.random.choice(a=[True, False], size=len(self.data), p=[downsampling, 1-downsampling])
         self.data = self.data[_mask]
 
     def apply_pixel_mask(self, pixel_mask, nside=2):
+        ''' Method to apply a given pixel mask to data.
+        
+        Args:
+            pixel_mask (array of int): valid pixels for the mask.
+            nside (int, optional): nside of the pixelization. (Default: 2).'''
         _pixels = hp.ang2pix(nside, self.data['RA'], self.data['DEC'], lonlat=True)
         _mask   = np.in1d(_pixels, pixel_mask)
         self.data = self.data[_mask]
 
     def apply_redshift_mask(self, zmin, zmax):
+        '''Method to apply a redshfit mask to data.
+        
+        Args:
+            zmin (float): Min. redshift for valid objects.
+            zmax (float): Max. redshift for valid objects.''' 
         _mask = self.data['Z'] > zmin
         _mask &= self.data['Z'] < zmax
         self.data = self.data[_mask]
 
     def compute_cov(self, interpolator):
+        ''' Compute comoving distance to all objects''' 
         self.cov = interpolator(self.data['Z'])
 
     def generate_random_redshifts_from_file(self, file, zmin=None, zmax=None, factor=1, pixel_mask=None, nside=2):
@@ -254,6 +284,12 @@ class FieldData:
                 p(z<zi) = N(z_i)/N(zmax) ->
                 z(p) = N_inv(N(zmax) p)
             where p in (0,1) and N the cumulative distribution.
+
+            Args:
+                file (str or Path): Input filem, will be read as dN/dzdOmega in deg^-2.
+                factor (float, optional): Factor to increase or decrease the number of randoms generated. (Default: 1)
+                pixel_mask (array of int, optional): Pixel mask in order to get the correct sky area. (Default: all_sky)
+                nside (int, optional): nside of the pixel_mask pixelization.
         '''
         from scipy.interpolate import interp1d
         from scipy.integrate import quad
@@ -281,6 +317,11 @@ class FieldData:
         self.data['Z'] = N_inv( ran*(N(zmax)-N(zmin)) + N(zmin) )
 
     def generate_random_redshifts_from_data(self, data, factor=1):
+        ''' Generate random redshifts by reading the redshift distribution from other data object.
+        
+        Args:
+            data (FieldData): data to use for reading the redshift distribution.
+            factor (float, optional): Factor to increase or decrease the number of randoms generated. (Default: 1)'''
         from scipy.interpolate import interp1d
 
         logger.info(f'Generating random catalog from {data.label} to {self.label}')  
@@ -297,6 +338,14 @@ class FieldData:
         self.data['Z'] = z_gen(ran1)
 
     def generate_random_positions(self, pixel_mask=None, nside=None):
+        ''' Generate random positions in the sky. Using the usual method (reversing distribution function).
+            If a pixel mask is given, the code will generate randoms for each pixel independently by previously
+            poisson sampling the number of randoms that should be set in each pixel. 
+
+            Args:
+                pixel_mask (array of int, optional): Pixels to include. (Default: all_sky)
+                nside (int, optional): nside of the pixel_mask pixelization.
+        '''
         logger.info(f'Computing random positions for field {self.label}')
         logger.critical('¡Random positions generator gives bad randoms! Use it at your own risk.')
         NRAND = len(self.data)
@@ -354,6 +403,10 @@ class FieldData:
             _index+=N
 
     def store_data_in_cat(self, filename): # pragma: no cover
+        ''' Save data into a fits file.
+        
+            Args:
+                filename (str or Path)'''
         logger.info(f'Writting catalogue {self.label} into {filename}')
         values = (self.data['RA'], self.data['DEC'], self.data['Z'])
         labels = ('RA', 'DEC', 'Z')
@@ -381,6 +434,15 @@ class FieldData:
         hdulist.close() 
 
     def prepare_data(self, zmin, zmax, downsampling, pixel_mask, nside):
+        ''' Method to prepare the data by reading it, applying masks and downsamplings
+        
+            Args:
+                zmin (float):
+                zmax (float):
+                downsampling (float):
+                pixel_mask (array of int):
+                nside (int):
+        '''
         logger.info('\nReading files:\n\t{}'.format("\n\t".join([str(cat) for cat in self.cat])))
         self.define_data_from_fits()
         self.fill_data()

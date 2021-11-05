@@ -95,12 +95,21 @@ class CFComputations:
 
     @cached_property
     def halotools_like_cf(self):
+        ''' Transform results from self.cf into something halootols could read''' 
         cf_array = []
         for smin in np.unique(self.DD['smin']):
             cf_array.append( self.cf[self.DD['smin'] == smin])
         return cf_array
 
     def compute_npole(self, n):
+        '''Compute multipoles by using halotools utility. Multipoles will be saved to file in order to speed up analysis (if possible).
+        
+        Args:
+            n (int): Multipole to return.
+            
+        Returns:
+            multipole as 1D array of length len(self.savg)    
+        ''' 
         try:
             npole = np.loadtxt(self.results_path / f'npole_{n}.dat')
         except OSError:
@@ -112,7 +121,8 @@ class CFComputations:
         
         return npole
 
-    def remove_computed_npoles(self, poles=[0,2,4]):
+    def remove_computed_npoles(self, poles=[0,2,4]): # pragma: no cover
+        ''' Remove computed multipoles from files. This might be needed in order to avoid loading saved multipoles with method self.compute_npole()'''
         for pole in poles:
             file = self.results_path / f'npole_{pole}.dat'
             file.unlink(missing_ok=True)

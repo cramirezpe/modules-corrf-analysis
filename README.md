@@ -37,3 +37,10 @@ Fitter tests are skipped by default, to run them (fails here might be ok):
 ```
 RUN_FITTER_TESTS=Y python -m unittest discover CoLoRe_corrf_analysis/tests
 ```
+
+# CoLoRe paper plots
+Plots for section 3 and appendices can be generated through the incorporated scripts:
+```
+CoLoRe_corrf_plot_section3
+CoLoRe_corrf_plot_appendices
+```
