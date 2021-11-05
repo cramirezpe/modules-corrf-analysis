@@ -75,16 +75,20 @@ def getArgs(): # pragma: no cover
 
     parser.add_argument("--generate-randoms2",
         action='store_true',
-        help='Generate randoms2. Default: (Use the ones form randoms1)')
+        help='Generate randoms2. Default: (Use the ones from randoms1)')
 
     parser.add_argument("--randoms-from-nz-file",
         type=Path,
         required=False,
-        help="Compute randoms from dndz file provided as Path")
+        help="Compute randoms from dndz file provided as Path. The file will be read as dN/dzdOmega in deg^-2. The number of randoms will be determined by this value and --randoms-factor.")
 
     parser.add_argument("--store-generated-rands",
         action='store_true',
         help='Store generated randoms in the output dir')
+
+    parser.add_argument('--randoms-factor',
+        default=1,
+        help='Modify the quantity of randoms by this factor.')
 
     parser.add_argument("--out-dir",
         type=Path,
@@ -244,7 +248,7 @@ class FieldData:
     def compute_cov(self, interpolator):
         self.cov = interpolator(self.data['Z'])
 
-    def generate_random_redshifts_from_file(self, file, zmin=None, zmax=None):
+    def generate_random_redshifts_from_file(self, file, zmin=None, zmax=None, factor=1, pixel_mask=None, nside=2):
         '''
             Generate random redshift values from an input dndz filename through the process:
                 p(z<zi) = N(z_i)/N(zmax) ->
@@ -252,6 +256,7 @@ class FieldData:
             where p in (0,1) and N the cumulative distribution.
         '''
         from scipy.interpolate import interp1d
+        from scipy.integrate import quad
 
         logger.info(f'Generating random catalog from file: {str(file)}')
         in_z, in_nz = np.loadtxt(file, unpack=True)
@@ -261,16 +266,21 @@ class FieldData:
 
         # Cumulative distribution
         in_Nz = np.cumsum(in_nz)
+        n = interp1d(in_z, in_nz)
         N = interp1d(in_z, in_Nz)
         N_inv = interp1d(in_Nz, in_z)
 
-        NRAND = len(self.data)
+        pixarea = hp.pixelfunc.nside2pixarea(nside, degrees=True)
+        pixels = len(pixel_mask) if pixel_mask is not None else 48
+        area = pixarea*pixels
+        NRAND = int(quad(n, zmin, zmax)[0]*area)
+        self.define_data_from_size(NRAND)
 
-        logger.debug('Generatin random number')
+        logger.debug('Generating random numbers')
         ran = np.random.random(NRAND)
         self.data['Z'] = N_inv( ran*(N(zmax)-N(zmin)) + N(zmin) )
 
-    def generate_random_redshifts_from_data(self, data):
+    def generate_random_redshifts_from_data(self, data, factor=1):
         from scipy.interpolate import interp1d
 
         logger.info(f'Generating random catalog from {data.label} to {self.label}')  
@@ -465,11 +475,11 @@ def main(args=None):
         if args.randoms != None:
             rand.prepare_data(args.zmin, args.zmax, args.randoms_downsampling, args.pixel_mask, args.nside)
         else:
-            rand.define_data_from_size(len(data.data))
             if args.randoms_from_nz_file != None: # pragma: no cover
-                rand.generate_random_redshifts_from_file(args.randoms_from_nz_file, zmin=args.zmin, zmax=args.zmax)
+                rand.generate_random_redshifts_from_file(args.randoms_from_nz_file, zmin=args.zmin, zmax=args.zmax, factor=args.randoms_factor, pixel_mask=args.pixel_mask, nside=args.nside)
             else:
-                rand.generate_random_redshifts_from_data(data)
+                rand.define_data_from_size(len(data.data))
+                rand.generate_random_redshifts_from_data(data, factor=args.randoms_factor)
             rand.generate_random_positions(pixel_mask=args.pixel_mask, nside=args.nside)
             rand.cat = []
             if args.store_generated_rands:
@@ -484,11 +494,11 @@ def main(args=None):
             rand2.compute_cov(f)
         elif args.generate_randoms2: # pragma: no cover
             rand2 = FieldData(args.randoms2, 'Randoms2', file_type='zcat')
-            rand2.define_data_from_size(len(data2.data))
             if args.randoms_from_nz_file != None:
                 rand2.generate_random_redshifts_from_file(args.randoms_from_nz_file, zmin=args.zmin, zmax=args.zmax)
             else:
-                rand2.generate_random_redshifts_from_data(data2)
+                rand2.define_data_from_size(len(data2.data))
+                rand2.generate_random_redshifts_from_data(data2, factor=args.randoms_factor)
             rand2.generate_random_positions(pixel_mask=args.pixel_mask, nside=args.nside)
             rand2.cat = []
             if args.store_generated_rands:

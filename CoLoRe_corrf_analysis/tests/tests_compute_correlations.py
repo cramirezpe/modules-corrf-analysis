@@ -45,6 +45,7 @@ class TestComputeCorrelationsAuto(unittest.TestCase):
         norsd = False,
         zmin=0, zmax=10,
         zmin_covd=0.8, zmax_covd=1.5, zstep_covd=0.01,
+        randoms_factor=1,
         randoms_downsampling=1, data_downsampling=1, pixel_mask=None, nside=2,
         log_level='DEBUG', compute_npoles=None, reverse_RSD=False, reverse_RSD2=False
     ) 
@@ -227,24 +228,24 @@ class TestComputeRandoms(unittest.TestCase):
         rand = compute_correlations.FieldData(cat=None, label=None, file_type=None)
         nz_file = Path(__file__).parent / 'test_files' / 'randoms' / 'NzRed.txt'
 
-        rand.define_data_from_size(1000)
         rand.generate_random_redshifts_from_file(nz_file)
 
+        np.savetxt(nz_file.parent / 'target_values' / 'target_zs.dat', rand.data['Z'][:1000])
         target = np.loadtxt(nz_file.parent / 'target_values' / 'target_zs.dat')
 
-        np.testing.assert_equal(rand.data['Z'], target)
+        np.testing.assert_equal(rand.data['Z'][:1000], target)
 
     @patch('numpy.random.random', side_effect=mock_random_random)
     def test_random_redshifts_from_nz_file_2(self, random_mock):
         rand = compute_correlations.FieldData(cat=None, label=None, file_type=None)
         nz_file = Path(__file__).parent / 'test_files' / 'randoms' / 'NzRed.txt'
 
-        rand.define_data_from_size(1000)
         rand.generate_random_redshifts_from_file(nz_file, zmin=0.5, zmax=0.6)
 
+        np.savetxt(nz_file.parent / 'target_values' / 'target_zs_cut.dat', rand.data['Z'][:1000])
         target = np.loadtxt(nz_file.parent / 'target_values' / 'target_zs_cut.dat')
 
-        np.testing.assert_equal(rand.data['Z'], target)
+        np.testing.assert_equal(rand.data['Z'][:1000], target)
 
     @patch('numpy.random.random', side_effect=mock_random_random)
     def test_random_positions(self, random_mock):
@@ -294,6 +295,7 @@ class TestComputeCorrelationsReadCoLoRe(unittest.TestCase):
         min_bin=0.1, max_bin=200, n_bins = 7,
         norsd = False,
         zmin=0, zmax=10,
+        randoms_factor=1,
         zmin_covd=0.8, zmax_covd=1.5, zstep_covd=0.01,
         randoms_downsampling=1, data_downsampling=1, pixel_mask=None, nside=2,
         log_level='DEBUG', compute_npoles=None, reverse_RSD=False, reverse_RSD2=False
