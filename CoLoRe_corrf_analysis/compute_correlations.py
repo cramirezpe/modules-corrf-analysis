@@ -88,7 +88,7 @@ def getArgs(): # pragma: no cover
 
     parser.add_argument('--randoms-factor',
         default=1,
-        help='Modify the quantity of randoms by this factor.')
+        help='Modify the quantity of generated randoms by this factor.')
 
     parser.add_argument("--out-dir",
         type=Path,
