@@ -84,6 +84,13 @@ def getArgs(): # pragma: no cover
         required=False,
         help="Compute randoms from dndz file provided as Path. The file will be read as dN/dzdOmega in deg^-2. The number of randoms will be determined by this value and --randoms-factor.")
 
+    parser.add_argument('--random-positions-method',
+        type=str, 
+        default='pixel',
+        help='''Method to generate random positions in the sky. Options:
+            - pixel: Generate randoms around each pixel.
+            - dice: Throw randoms at the whole sky and remove the one outside any valid pixel.''')
+
     parser.add_argument("--store-generated-rands",
         action='store_true',
         help='Store generated randoms in the output dir')
@@ -340,7 +347,25 @@ class FieldData:
         ran1 = np.random.random(NRAND)
         self.data['Z'] = z_gen(ran1)
 
-    def generate_random_positions(self, pixel_mask=None, nside=None):
+    def generate_random_positions(self, pixel_mask=None, nside=None, method='pixel'):
+        logger.info(f'Computing random positions for field {self.label}')
+        NRAND = len(self.data)
+        if pixel_mask is None:
+            logger.info('No pixel mask added. Computing randoms for the full sky')
+            ran1 = np.random.random(int(NRAND))
+            ran2 = np.random.random(int(NRAND))
+
+            self.data['RA'] = np.degrees(np.pi*2*ran1)
+            self.data['DEC'] = np.degrees(np.arcsin(2.*(ran2-0.5)))
+            return
+        elif method == 'pixel':
+            self.generate_random_positions_pixel(pixel_mask=pixel_mask, nside=nside)
+        elif method == 'dice':
+            self.generate_random_positions_dice(pixel_mask=pixel_mask, nside=nside)
+        else: # pragma: no cover
+            raise ValueError('Invalid method for generating pixels', method)
+
+    def generate_random_positions_dice(self, pixel_mask=None, nside=None): # pragma: no cover
         ''' Generate random positions in the sky. Using the usual method (reversing distribution function).
             If a pixel mask is given, the code will generate randoms for each pixel independently by previously
             poisson sampling the number of randoms that should be set in each pixel. 
@@ -349,17 +374,48 @@ class FieldData:
                 pixel_mask (array of int, optional): Pixels to include. (Default: all_sky)
                 nside (int, optional): nside of the pixel_mask pixelization.
         '''
-        logger.info(f'Computing random positions for field {self.label}')
-        logger.critical('¡Random positions generator gives bad randoms! Use it at your own risk.')
         NRAND = len(self.data)
-        if pixel_mask == None:
-            ran1 = np.random.random(int(NRAND))
-            ran2 = np.random.random(int(NRAND))
 
-            self.data['RA'] = np.degrees(np.pi*2*ran1)
-            self.data['DEC'] = np.degrees(np.arcsin(2.*(ran2-0.5)))
+        logger.info('Using dice mode:\nComputing randoms for full sky and discarding the ones not in footprint.')
+        sky_fraction = len(pixel_mask) / (12*nside**2)
+        logger.debug(f'Sky fraction: {sky_fraction}')
 
-            return
+        valids = 0
+        while valids < NRAND:
+            logger.debug('Iterating through the random generator')
+            randoms_left = NRAND - valids
+            randoms_to_generate = int(randoms_left/sky_fraction)
+            logger.debug(f'\t{randoms_left} elements left to include\n\tGenerating {randoms_to_generate} random positions')
+            ran1 = np.random.random(randoms_to_generate)
+            ran2 = np.random.random(randoms_to_generate)
+
+            RAs     = np.degrees(np.pi*2*ran1)
+            DECs    = np.degrees(np.arcsin(2.*(ran2-0.5)))
+
+            gen_pixels = hp.pixelfunc.ang2pix(nside, RAs, DECs, lonlat=True)
+            w = np.isin(gen_pixels, pixel_mask)
+            accepted = w.sum()
+            logger.debug(f'Accepted randoms: {accepted}')
+
+            if accepted + valids > NRAND:
+                accepted = NRAND - valids
+            
+            self.data['RA'][valids:valids+accepted] = RAs[w][:accepted]
+            self.data['DEC'][valids:valids+accepted] = DECs[w][:accepted]
+            valids += accepted
+
+    def generate_random_positions_pixel(self, pixel_mask=None, nside=None):
+        ''' Generate random positions in the sky. Using the usual method (reversing distribution function).
+            If a pixel mask is given, the code will generate randoms for each pixel independently by previously
+            poisson sampling the number of randoms that should be set in each pixel and generating them around
+            the pixel.
+
+            Args:
+                pixel_mask (array of int, optional): Pixels to include. (Default: all_sky)
+                nside (int, optional): nside of the pixel_mask pixelization.
+        '''
+        logger.critical('Using pixel mode.\nRandoms will be generated around valid pixels.')
+        NRAND = len(self.data)
 
         _lambda = NRAND / len(pixel_mask)
         randoms_per_pixel = np.random.poisson(_lambda, len(pixel_mask))
@@ -546,7 +602,7 @@ def main(args=None):
             else:
                 rand.define_data_from_size(len(data.data))
                 rand.generate_random_redshifts_from_data(data, factor=args.randoms_factor)
-            rand.generate_random_positions(pixel_mask=args.pixel_mask, nside=args.nside)
+            rand.generate_random_positions(pixel_mask=args.pixel_mask, nside=args.nside, method=args.random_positions_method)
             rand.cat = []
             if args.store_generated_rands:
                 rand.store_data_in_cat(Path(args.out_dir) / (rand.label + '.fits'))
@@ -565,7 +621,7 @@ def main(args=None):
             else:
                 rand2.define_data_from_size(len(data2.data))
                 rand2.generate_random_redshifts_from_data(data2, factor=args.randoms_factor)
-            rand2.generate_random_positions(pixel_mask=args.pixel_mask, nside=args.nside)
+            rand2.generate_random_positions(pixel_mask=args.pixel_mask, nside=args.nside, method=args.random_positions_method)
             rand2.cat = []
             if args.store_generated_rands:
                 rand2.store_data_in_cat(Path(args.out_dir) / (rand2.label + '.fits'))
