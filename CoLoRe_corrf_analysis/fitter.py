@@ -114,7 +114,10 @@ class Fitter:
         '''
         err_ = np.array([])
         for _pole in self.poles:
-            err_ = np.append(err_, self.xis[_pole].std(axis=0, ddof=1)[self.masks[_pole]]/len(self.boxes))
+            if len(self.boxes) == 1:
+                err_ = np.append(err_, np.ones(self.masks[_pole].sum()))
+            else:
+                err_ = np.append(err_, self.xis[_pole].std(axis=0, ddof=1)[self.masks[_pole]]/len(self.boxes))
         return err_
 
     def model(self, bias, smooth_factor, smooth_factor_rsd, smooth_factor_cross, pole, bias2):
