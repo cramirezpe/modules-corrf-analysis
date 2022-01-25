@@ -157,7 +157,7 @@ class Fitter:
         
         _model = np.array([])
         for _pole in self.poles:
-            _model = np.append(_model, self.model(params['bias'], params['smooth_factor'], params['smooth_factor_rsd'], params['smooth_factor_cross'], _pole, bias2)[self.masks[_pole]])
+            _model = np.append(_model, params['scale_factor']*self.model(params['bias'], params['smooth_factor'], params['smooth_factor_rsd'], params['smooth_factor_cross'], _pole, bias2)[self.masks[_pole]])
 
         return (self.data -_model) / self.err
 
@@ -178,17 +178,19 @@ class Fitter:
             bias2 = self.bias20,
             smooth_factor = self.smooth_factor0,
             smooth_factor_rsd = self.smooth_factor_rsd0,
-            smooth_factor_cross = self.smooth_factor_cross0
+            smooth_factor_cross = self.smooth_factor_cross0,
+            scale_factor = 1
         )
 
         for i in free_params:
-            assert i in ('bias', 'smooth_factor', 'smooth_factor_rsd', 'smooth_factor_cross', 'bias2') 
+            assert i in ('bias', 'smooth_factor', 'smooth_factor_rsd', 'smooth_factor_cross', 'bias2', 'scale_factor') 
 
         params = Parameters()
         params.add('bias', value=defaults['bias'], min=0, vary='bias' in free_params)
         params.add('smooth_factor', value=defaults['smooth_factor'], min=0, vary='smooth_factor' in free_params)
         params.add('smooth_factor_rsd', value=defaults['smooth_factor_rsd'], min=0, vary='smooth_factor_rsd' in free_params)
         params.add('smooth_factor_cross', value=defaults['smooth_factor_cross'], min=0, vary='smooth_factor_cross' in free_params)
+        params.add('scale_factor', value=defaults['scale_factor'], min=0, vary='scale_factor' in free_params)
         if self.cross:
             params.add('bias2', value=defaults['bias2'], min=0, vary='bias2' in free_params)
 
