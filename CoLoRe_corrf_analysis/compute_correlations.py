@@ -35,7 +35,7 @@ def getArgs(): # pragma: no cover
 
     parser.add_argument("--data-format",
         type=str,
-        choices=['CoLoRe', 'zcat'],
+        choices=['CoLoRe', 'zcat', 'master'],
         default='zcat')
 
     parser.add_argument("--data-norsd",
@@ -50,7 +50,7 @@ def getArgs(): # pragma: no cover
 
     parser.add_argument("--data2-format",
         type=str,
-        choices=['CoLoRe', 'zcat'],
+        choices=['CoLoRe', 'zcat', 'master'],
         default='zcat')
 
     parser.add_argument("--compute-npoles",
@@ -201,6 +201,7 @@ class FieldData:
             file_type (str): Input type. Options:
                 - "CoLoRe": CoLoRe srcs output files.
                 - "zcat": fits file with the fields "Z", "RA" and "DEC" in the first header.
+                - "master": LyaCoLoRe master file.
             rsd (bool, optional): Whether to include RSD in data (only for CoLoRe). (Default: False).
             reverse_RSD (bool, optional): Whether to reverse the effect of RSD (only for CoLoRe).
                 (Default: False)
@@ -208,10 +209,7 @@ class FieldData:
         self.cat   = cat
         self.label  = label
         self.file_type = file_type
-        if file_type == 'zcat':
-            self.rsd = False
-        else:
-            self.rsd = rsd
+        self.rsd = rsd
         self.reverse_RSD = reverse_RSD
 
     def __str__(self): # pragma: no cover
@@ -224,6 +222,11 @@ class FieldData:
             return 'Z'
         elif self.file_type == 'CoLoRe':
             return 'Z_COSMO'
+        elif self.file_type == 'master':
+            if self.rsd:
+                return 'Z_QSO_RSD'
+            else:
+                return 'Z_QSO_NO_RSD'
 
     def open_fits(self, imock):
         self.fits = fitsio.read(self.cat[imock])
@@ -250,11 +253,13 @@ class FieldData:
             self.data['DEC'][_index:_index+_file_size] = self.fits['DEC']
             self.data['Z'][_index:_index+_file_size]   = self.fits[self.zfield]
             if self.rsd:
-                if self.reverse_RSD:
-                    self.data['Z'][_index:_index+_file_size] -= self.fits['DZ_RSD']
-                else:
-                    self.data['Z'][_index:_index+_file_size] += self.fits['DZ_RSD']
-            
+                if self.file_type == 'CoLoRe':
+                    if self.reverse_RSD:
+                        self.data['Z'][_index:_index+_file_size] -= self.fits['DZ_RSD']
+                    else:
+                        self.data['Z'][_index:_index+_file_size] += self.fits['DZ_RSD']
+                if self.file_type == 'master' and self.reverse_RSD:
+                    self.data['Z'][_index:_index+_file_size] = 2*self.fits['Z_QSO_NO_RSD'] - self.fits['Z_QSO_RSD']
             _index += _file_size
 
     def apply_downsampling(self, downsampling): # pragma: no cover
