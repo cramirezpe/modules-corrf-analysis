@@ -32,7 +32,7 @@ class TestComputeCorrelationsAuto(unittest.TestCase):
 
     args = SimpleNamespace(
         data=[Path(i) for i in catalogues.resolve().glob('s4_rsd.fits')],
-        data_norsd=False,
+        data_norsd=True,
         randoms=[Path(i) for i in catalogues.resolve().glob('s4_rsd_rand.fits')],
         data_format='zcat', data2_format='zcat',
         data2=None, randoms2=None, generate_randoms2=False,
