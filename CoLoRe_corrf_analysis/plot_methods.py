@@ -27,11 +27,12 @@ class Plots:
                          smooth_factor=fitter.out.params['smooth_factor'].value, 
                          smooth_factor_rsd=fitter.out.params['smooth_factor_rsd'].value, 
                          smooth_factor_cross=fitter.out.params['smooth_factor_cross'].value, 
+                         scale_factor=fitter.out.params['scale_factor'].value,
                          fitted_region=fitted_region, plot_args=plot_args,
                          reverse_rsd=fitter.reverse_rsd, reverse_rsd2=fitter.reverse_rsd2, no_labels=no_labels)
            
     @staticmethod
-    def plot_theory(pole, z, theory, ax=None, plot_args=dict(), bias=None, bias2=None, smooth_factor=None, smooth_factor_rsd=None, smooth_factor_cross=None, rsd=True, rsd2=None, fitted_region=(0,301), reverse_rsd=False, reverse_rsd2=False, no_labels=False):
+    def plot_theory(pole, z, theory, ax=None, plot_args=dict(), bias=None, bias2=None, smooth_factor=None, smooth_factor_rsd=None, smooth_factor_cross=None, scale_factor=1, rsd=True, rsd2=None, fitted_region=(0,301), reverse_rsd=False, reverse_rsd2=False, no_labels=False):
         ''' Plot a given model in a given axis.
 
         Args:
@@ -57,7 +58,7 @@ class Plots:
         # if bias is None:
         #     bias = theory.bias(z)
 
-        xi_th = np.asarray(theory.get_npole(n=pole, z=z, bias=bias, bias2=bias2, rsd=rsd, rsd2=rsd2, smooth_factor=smooth_factor, smooth_factor_rsd=smooth_factor_rsd, smooth_factor_cross=smooth_factor_cross, reverse_rsd=reverse_rsd, reverse_rsd2=reverse_rsd2))
+        xi_th = np.asarray(scale_factor*theory.get_npole(n=pole, z=z, bias=bias, bias2=bias2, rsd=rsd, rsd2=rsd2, smooth_factor=smooth_factor, smooth_factor_rsd=smooth_factor_rsd, smooth_factor_cross=smooth_factor_cross, reverse_rsd=reverse_rsd, reverse_rsd2=reverse_rsd2))
 
         msk = theory.r < 301
         msk_fitted = theory.r > fitted_region[0]
@@ -74,7 +75,7 @@ class Plots:
             ax.set_ylabel(r'$r^2 \xi(r)$')
 
     @staticmethod
-    def get_xi(pole, boxes):
+    def get_xi(pole, boxes, jacknife=False):
         ''' Get Xi and errorbars for a given set of data boxes
         
         Args:
@@ -84,13 +85,25 @@ class Plots:
             2D array (xi, xierr) with correlation and correlation error.
         '''
         xis = np.array( [box.compute_npole(pole, ) for box in boxes] ) 
-        xi = xis.mean(axis=0)
-        xierr = xis.std(axis=0, ddof=1)/np.sqrt(len(boxes))
+
+        if not jacknife:
+            xi = xis.mean(axis=0)
+            xierr = xis.std(axis=0, ddof=1)/np.sqrt(len(boxes))
+        else:
+            jacknife_xis = []
+            for i in range(len(xis)):
+                reduced_xis = np.delete(xis, i, axis=0)
+                jacknife_xis.append( reduced_xis.mean(axis=0) )
+            jacknife_xis = np.asarray(jacknife_xis)
+            xi = jacknife_xis.mean(axis=0)
+            xierr = (len(boxes)-1) * ((jacknife_xis - xi)**2).mean(axis=0)
+            xierr = np.sqrt(xierr)
+            
         # xierr = xis.std(axis=0) # This is the same error that David uses.
         return xi, xierr
 
     @classmethod
-    def plot_data(cls, pole, boxes, ax=None, plot_args=dict(), delta_r=0, shaded_errors=False, no_labels=False):
+    def plot_data(cls, pole, boxes, ax=None, plot_args=dict(), delta_r=0, shaded_errors=False, no_labels=False, error_rescaling=1, jacknife=False):
         '''Plot data for the given boxes in an axis.
         
         Args:
@@ -103,7 +116,8 @@ class Plots:
         if ax is None:
             fig, ax = plt.subplots()
         
-        xi, xierr = cls.get_xi(pole, boxes)
+        xi, xierr = cls.get_xi(pole, boxes, jacknife=jacknife)
+        xierr *= error_rescaling
 
         box = boxes[0]
         if delta_r != 0:
