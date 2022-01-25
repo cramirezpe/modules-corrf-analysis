@@ -11,6 +11,7 @@ from pathlib import Path
 import healpy as hp
 import numpy as np
 import scipy.integrate as integrate
+import fitsio
 from astropy.io import fits
 from Corrfunc.mocks.DDsmu_mocks import DDsmu_mocks
 from scipy import interpolate
@@ -225,14 +226,14 @@ class FieldData:
             return 'Z_COSMO'
 
     def open_fits(self, imock):
-        self.fits = fits.open(self.cat[imock])
+        self.fits = fitsio.read(self.cat[imock])
 
     def define_data_from_fits(self):
         ''' Method to define the data structure by reading input fits files.'''
         _cat_length = 0
         for i in range(len(self.cat)):
             self.open_fits(i)
-            _cat_length += len(self.fits[1].data)
+            _cat_length += len(self.fits)
         self.data = np.empty(_cat_length,dtype=[('RA','f8'),('DEC','f8'),('Z','f8'),('Weight','f8')])
 
     def define_data_from_size(self, N):
@@ -244,15 +245,15 @@ class FieldData:
         _index = 0
         for i in range(len(self.cat)):
             self.open_fits(i)
-            _file_size = len(self.fits[1].data)
-            self.data['RA'][_index:_index+_file_size]  = self.fits[1].data['RA']
-            self.data['DEC'][_index:_index+_file_size] = self.fits[1].data['DEC']
-            self.data['Z'][_index:_index+_file_size]   = self.fits[1].data[self.zfield]
+            _file_size = len(self.fits)
+            self.data['RA'][_index:_index+_file_size]  = self.fits['RA']
+            self.data['DEC'][_index:_index+_file_size] = self.fits['DEC']
+            self.data['Z'][_index:_index+_file_size]   = self.fits[self.zfield]
             if self.rsd:
                 if self.reverse_RSD:
-                    self.data['Z'][_index:_index+_file_size] -= self.fits[1].data['DZ_RSD']
+                    self.data['Z'][_index:_index+_file_size] -= self.fits['DZ_RSD']
                 else:
-                    self.data['Z'][_index:_index+_file_size] += self.fits[1].data['DZ_RSD']
+                    self.data['Z'][_index:_index+_file_size] += self.fits['DZ_RSD']
             
             _index += _file_size
 
