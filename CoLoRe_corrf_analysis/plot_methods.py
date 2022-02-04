@@ -21,7 +21,7 @@ class Plots:
             bias2 = fitter.out.params['bias2'].value
         else:
             bias2 = bias
-        cls.plot_theory(pole=pole, z=fitter.z, theory=fitter.theory,
+        cls.plot_theory(pole=pole, z=fitter.out.params['z'].value, theory=fitter.theory,
          ax=ax, bias=bias, bias2=bias2,
                         rsd=fitter.rsd, rsd2=fitter.rsd2,
                          smooth_factor=fitter.out.params['smooth_factor'].value, 

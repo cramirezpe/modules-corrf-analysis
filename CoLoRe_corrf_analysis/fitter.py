@@ -33,7 +33,7 @@ class Fitter:
             reverse_rsd2 (bool, optional): Reverse redshift for second field in cross-correlations (rsd terms negative). (Default: False)
         '''
         self.boxes  = boxes
-        self.z      = z
+        self.z0      = z
         self.poles  = poles
         
         self.rsd    = rsd
@@ -120,7 +120,7 @@ class Fitter:
                 err_ = np.append(err_, self.xis[_pole].std(axis=0, ddof=1)[self.masks[_pole]]/len(self.boxes))
         return err_
 
-    def model(self, bias, smooth_factor, smooth_factor_rsd, smooth_factor_cross, pole, bias2):
+    def model(self, z, bias, smooth_factor, smooth_factor_rsd, smooth_factor_cross, pole, bias2):
         '''Method to get an interpolation object with a given model.
         
         Args:
@@ -137,7 +137,7 @@ class Fitter:
         if not self.cross:
             bias2=None
 
-        xi = self.theory.get_npole(n=pole, z=self.z, bias=bias, bias2=bias2, rsd=self.rsd, rsd2=self.rsd2, smooth_factor=smooth_factor, smooth_factor_rsd=smooth_factor_rsd, smooth_factor_cross=smooth_factor_cross, reverse_rsd=self.reverse_rsd, reverse_rsd2=self.reverse_rsd2)
+        xi = self.theory.get_npole(n=pole, z=z, bias=bias, bias2=bias2, rsd=self.rsd, rsd2=self.rsd2, smooth_factor=smooth_factor, smooth_factor_rsd=smooth_factor_rsd, smooth_factor_cross=smooth_factor_cross, reverse_rsd=self.reverse_rsd, reverse_rsd2=self.reverse_rsd2)
         model_xi = interp1d(self.theory.r, xi)
         return model_xi(self.r)
 
@@ -157,7 +157,7 @@ class Fitter:
         
         _model = np.array([])
         for _pole in self.poles:
-            _model = np.append(_model, params['scale_factor']*self.model(params['bias'], params['smooth_factor'], params['smooth_factor_rsd'], params['smooth_factor_cross'], _pole, bias2)[self.masks[_pole]])
+            _model = np.append(_model, params['scale_factor']*self.model(params['z'], params['bias'], params['smooth_factor'], params['smooth_factor_rsd'], params['smooth_factor_cross'], _pole, bias2)[self.masks[_pole]])
 
         return (self.data -_model) / self.err
 
@@ -174,6 +174,7 @@ class Fitter:
         assert isinstance(free_params, list) # I need a certain order in the free_params list for this method to work
 
         defaults = dict(
+            z = self.z0,
             bias = self.bias0,
             bias2 = self.bias20,
             smooth_factor = self.smooth_factor0,
@@ -183,9 +184,10 @@ class Fitter:
         )
 
         for i in free_params:
-            assert i in ('bias', 'smooth_factor', 'smooth_factor_rsd', 'smooth_factor_cross', 'bias2', 'scale_factor') 
+            assert i in ('bias', 'smooth_factor', 'smooth_factor_rsd', 'smooth_factor_cross', 'bias2', 'scale_factor', 'z') 
 
         params = Parameters()
+        params.add('z', value=defaults['z'], min=0, vary='z' in free_params)
         params.add('bias', value=defaults['bias'], min=0, vary='bias' in free_params)
         params.add('smooth_factor', value=defaults['smooth_factor'], min=0, vary='smooth_factor' in free_params)
         params.add('smooth_factor_rsd', value=defaults['smooth_factor_rsd'], min=0, vary='smooth_factor_rsd' in free_params)
