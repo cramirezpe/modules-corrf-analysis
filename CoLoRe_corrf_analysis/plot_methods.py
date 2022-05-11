@@ -74,6 +74,8 @@ class Plots:
             ax.set_xlabel(r'$r \, [{\rm Mpc/h}]$')
             ax.set_ylabel(r'$r^2 \xi(r)$')
 
+        return theory.r[msk], theory.r[msk]**2*xi_th[msk]
+
     @staticmethod
     def get_xi(pole, boxes, jacknife=False):
         ''' Get Xi and errorbars for a given set of data boxes
@@ -103,7 +105,7 @@ class Plots:
         return xi, xierr
 
     @classmethod
-    def plot_data(cls, pole, boxes, ax=None, plot_args=dict(), delta_r=0, shaded_errors=False, no_labels=False, error_rescaling=1, jacknife=False):
+    def plot_data(cls, pole, boxes, ax=None, plot_args=dict(), delta_r=0, shaded_errors=False, shaded_errors_args=dict(facecolor='#AAAAAA'), no_labels=False, error_rescaling=1, jacknife=False):
         '''Plot data for the given boxes in an axis.
         
         Args:
@@ -127,7 +129,7 @@ class Plots:
             if delta_r != 0:
                 raise ValueError('delta_r incompatible with shaded erros')
             else:
-                ax.fill_between(box.savg, box.savg**2*(xi + xierr), box.savg**2*(xi-xierr), facecolor='#AAAAAA')
+                ax.fill_between(box.savg, box.savg**2*(xi + xierr), box.savg**2*(xi-xierr), **shaded_errors_args)
         else:
             plot_args = { **dict(fmt='.', c='C0'), **plot_args}
             ax.errorbar(box.savg+delta_r, box.savg**2*xi, box.savg**2*xierr, **plot_args)      
