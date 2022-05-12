@@ -182,6 +182,11 @@ def getArgs(): # pragma: no cover
         action='store_true',
         help='Reverse the effect of RSD for field 2')
 
+    parser.add_argument('--velocity-boost',
+        required=False,
+        default=0,
+        help='Boost percentage to apply to all velocities')
+
     parser.add_argument('--log-level', default='WARNING', choices=['CRITICAL', 'ERROR', 'WARNING', 'INFO', 'DEBUG', 'NOTSET'])
 
     args = parser.parse_args()
@@ -192,7 +197,7 @@ class FieldData:
     
     It is used to read from input files, compute randoms, apply masks...
     '''
-    def __init__(self, cat, label, file_type, rsd=False, reverse_RSD=False):
+    def __init__(self, cat, label, file_type, rsd=False, reverse_RSD=False, velocity_boost=None):
         '''
         Args:
             cat (array of str or Path): Input data to read, they can be CoLoRe files or
@@ -211,6 +216,7 @@ class FieldData:
         self.file_type = file_type
         self.rsd = rsd
         self.reverse_RSD = reverse_RSD
+        self.velocity_boost = velocity_boost
 
     def __str__(self): # pragma: no cover
         return self.label
@@ -252,14 +258,23 @@ class FieldData:
             self.data['RA'][_index:_index+_file_size]  = self.fits['RA']
             self.data['DEC'][_index:_index+_file_size] = self.fits['DEC']
             self.data['Z'][_index:_index+_file_size]   = self.fits[self.zfield]
+
+            if self.velocity_boost is not None:
+                boost = self.velocity_boost / (1 + self.fits[self.zfield])
+            else:
+                boost = 1
+
             if self.rsd:
                 if self.file_type == 'CoLoRe':
                     if self.reverse_RSD:
                         self.data['Z'][_index:_index+_file_size] -= self.fits['DZ_RSD']
                     else:
                         self.data['Z'][_index:_index+_file_size] += self.fits['DZ_RSD']
-                if self.file_type == 'master' and self.reverse_RSD:
-                    self.data['Z'][_index:_index+_file_size] = 2*self.fits['Z_QSO_NO_RSD'] - self.fits['Z_QSO_RSD']
+                if self.file_type == 'master' and (self.reverse_RSD or self.velocity_boost):
+                    dz = self.fits['Z_QSO_RSD'] - self.fits['Z_QSO_NO_RSD']
+                    if self.reverse_rsd:
+                        boost *= -1
+                    self.data['Z'][_index:_index+_file_size] = self.fits['Z_QSO_NO_RSD'] + boost*dz
             _index += _file_size
 
     def apply_downsampling(self, downsampling): # pragma: no cover
@@ -585,13 +600,13 @@ def main(args=None):
 
     data_to_use = set()
     if 'D1' in to_compute:
-        data = FieldData(args.data, 'Data', file_type=args.data_format, rsd=not(args.data_norsd), reverse_RSD=args.reverse_RSD)
+        data = FieldData(args.data, 'Data', file_type=args.data_format, rsd=not(args.data_norsd), reverse_RSD=args.reverse_RSD, velocity_boost=args.velocity_boost)
         data.prepare_data(args.zmin, args.zmax, args.data_downsampling, args.pixel_mask, args.nside)
         data.compute_cov(f)
         data_to_use.add(data)
 
     if 'D2' in to_compute or args.generate_randoms2: # @ fix this. I could get randoms from dndz
-        data2 = FieldData(args.data2, 'Data2', file_type=args.data2_format, rsd=not(args.data2_norsd), reverse_RSD=args.reverse_RSD2)
+        data2 = FieldData(args.data2, 'Data2', file_type=args.data2_format, rsd=not(args.data2_norsd), reverse_RSD=args.reverse_RSD2, velocity_boost=args.velocity_boost)
         data2.prepare_data(args.zmin, args.zmax, args.data_downsampling, args.pixel_mask, args.nside)
         data2.compute_cov(f)
         data_to_use.add(data2)
