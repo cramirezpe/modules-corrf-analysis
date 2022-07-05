@@ -178,8 +178,9 @@ def getArgs():  # pragma: no cover
     parser.add_argument(
         "--velocity-boost",
         required=False,
-        default=0,
-        help="Boost percentage to apply to all velocities",
+        default=1,
+        type=float,
+        help="Boost to apply to all velocities",
     )
 
     parser.add_argument(
@@ -267,27 +268,22 @@ class FieldData:
             self.data["DEC"][_index : _index + _file_size] = self.fits["DEC"]
             self.data["Z"][_index : _index + _file_size] = self.fits[self.zfield]
 
-            if self.velocity_boost is not None:
-                boost = self.velocity_boost / (1 + self.fits[self.zfield])
-            else:
-                boost = 1
-
             if self.rsd:
+                if self.velocity_boost is not None:
+                    boost = self.velocity_boost
+                else:
+                    boost = 1
+
+                if self.reverse_RSD:
+                    boost *= -1
+
                 if self.file_type == "CoLoRe":
-                    if self.reverse_RSD:
-                        self.data["Z"][_index : _index + _file_size] -= self.fits[
-                            "DZ_RSD"
-                        ]
-                    else:
-                        self.data["Z"][_index : _index + _file_size] += self.fits[
-                            "DZ_RSD"
-                        ]
+                    dz = self.fits["DZ_RSD"]
+                    self.data["Z"][_index : _index + _file_size] += boost*dz
                 if self.file_type == "master" and (
                     self.reverse_RSD or self.velocity_boost
                 ):
                     dz = self.fits["Z_QSO_RSD"] - self.fits["Z_QSO_NO_RSD"]
-                    if self.reverse_rsd:
-                        boost *= -1
                     self.data["Z"][_index : _index + _file_size] = (
                         self.fits["Z_QSO_NO_RSD"] + boost * dz
                     )
@@ -776,6 +772,7 @@ def main(args=None):
     with open(args.out_dir / "sizes.json", "w") as json_file:
         json.dump(sizes, json_file)
 
+    import pdb; pdb.set_trace()
     if "DD" not in available_counts:
         logger.info("Computing DD...")
         DD = DDsmu_mocks(
