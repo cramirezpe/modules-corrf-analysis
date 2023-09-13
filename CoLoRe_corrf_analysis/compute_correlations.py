@@ -772,7 +772,6 @@ def main(args=None):
     with open(args.out_dir / "sizes.json", "w") as json_file:
         json.dump(sizes, json_file)
 
-    import pdb; pdb.set_trace()
     if "DD" not in available_counts:
         logger.info("Computing DD...")
         DD = DDsmu_mocks(
