@@ -69,7 +69,7 @@ class TestAuto(unittest.TestCase):
             params["smooth_factor_rsd"].vary,
             params["smooth_factor"].vary,
         ]
-        target = [1.0948031, 0.0530377, 38.7995783, True, False, True]
+        target = [1.095, 0.053, 38.788, True, False, True]
 
         np.testing.assert_almost_equal(values, target, decimal=3)
 

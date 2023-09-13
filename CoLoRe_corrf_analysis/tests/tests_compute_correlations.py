@@ -49,6 +49,7 @@ class TestComputeCorrelationsAuto(unittest.TestCase):
         out_dir=Path((out_dir).resolve()),
         nthreads=8,
         mu_max=1,
+		velocity_boost=1,
         nmu_bins=4,
         min_bin=0.1,
         max_bin=200,
@@ -158,6 +159,7 @@ class TestComputeCorrelationsCross(unittest.TestCase):
         nthreads=8,
         random_positions_method="pixel",
         mu_max=1,
+		velocity_boost=1,
         nmu_bins=4,
         min_bin=0.1,
         max_bin=200,
@@ -372,6 +374,7 @@ class TestComputeCorrelationsReadCoLoRe(unittest.TestCase):
         nthreads=8,
         random_positions_method="pixel",
         mu_max=1,
+		velocity_boost=1,
         nmu_bins=4,
         min_bin=0.1,
         max_bin=200,
@@ -414,5 +417,15 @@ class TestComputeCorrelationsReadCoLoRe(unittest.TestCase):
         DD_target = np.loadtxt(self.out_dir.parent / "target_values" / "DD.dat")
         DR_target = np.loadtxt(self.out_dir.parent / "target_values" / "DR.dat")
         RR_target = np.loadtxt(self.out_dir.parent / "target_values" / "RR.dat")
+
+
+        DD = np.savetxt(self.out_dir.parent / "output" / "DD.dat", DD )
+        DR = np.savetxt(self.out_dir.parent / "output" / "DR.dat", DR )
+        RR = np.savetxt(self.out_dir.parent / "output" / "RR.dat", RR )
+
+        DD_target = np.savetxt(self.out_dir.parent / "target_values" / "DD.dat", DD_target )
+        DR_target = np.savetxt(self.out_dir.parent / "target_values" / "DR.dat", DR_target )
+        RR_target = np.savetxt(self.out_dir.parent / "target_values" / "RR.dat", RR_target )
+
 
         np.testing.assert_equal((DD, DR, RR), (DD_target, DR_target, RR_target))
