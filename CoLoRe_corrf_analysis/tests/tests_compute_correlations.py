@@ -294,9 +294,6 @@ class TestComputeRandoms(unittest.TestCase):
 
         rand.generate_random_redshifts_from_file(nz_file)
 
-        np.savetxt(
-            nz_file.parent / "target_values" / "target_zs.dat", rand.data["Z"][:1000]
-        )
         target = np.loadtxt(nz_file.parent / "target_values" / "target_zs.dat")
 
         np.testing.assert_equal(rand.data["Z"][:1000], target)
@@ -308,10 +305,6 @@ class TestComputeRandoms(unittest.TestCase):
 
         rand.generate_random_redshifts_from_file(nz_file, zmin=0.5, zmax=0.6)
 
-        np.savetxt(
-            nz_file.parent / "target_values" / "target_zs_cut.dat",
-            rand.data["Z"][:1000],
-        )
         target = np.loadtxt(nz_file.parent / "target_values" / "target_zs_cut.dat")
 
         np.testing.assert_equal(rand.data["Z"][:1000], target)
@@ -417,15 +410,5 @@ class TestComputeCorrelationsReadCoLoRe(unittest.TestCase):
         DD_target = np.loadtxt(self.out_dir.parent / "target_values" / "DD.dat")
         DR_target = np.loadtxt(self.out_dir.parent / "target_values" / "DR.dat")
         RR_target = np.loadtxt(self.out_dir.parent / "target_values" / "RR.dat")
-
-
-        DD = np.savetxt(self.out_dir.parent / "output" / "DD.dat", DD )
-        DR = np.savetxt(self.out_dir.parent / "output" / "DR.dat", DR )
-        RR = np.savetxt(self.out_dir.parent / "output" / "RR.dat", RR )
-
-        DD_target = np.savetxt(self.out_dir.parent / "target_values" / "DD.dat", DD_target )
-        DR_target = np.savetxt(self.out_dir.parent / "target_values" / "DR.dat", DR_target )
-        RR_target = np.savetxt(self.out_dir.parent / "target_values" / "RR.dat", RR_target )
-
 
         np.testing.assert_equal((DD, DR, RR), (DD_target, DR_target, RR_target))
