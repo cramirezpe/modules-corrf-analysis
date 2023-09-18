@@ -20,12 +20,14 @@ def getArgs():
     parser.add_argument(
         "--from-cat",
         type=Path,
+        nargs='+',
         required=False,
         help="Compute randoms from given drq cat",
     )
     parser.add_argument(
         "--from-colore",
         type=Path,
+        nargs='+',
         required=False,
         help="Compute randoms from given CoLoRe box",
     )
@@ -88,12 +90,12 @@ def main(args=None):
 
     if args.from_cat != None:
         rand = FieldData(args.from_cat, "Randoms", file_type="zcat")
-        rand.prepare_dat(
+        rand.prepare_data(
             args.zmin, args.zmax, args.downsampling, args.pixel_mask, args.nside
         )
     elif args.from_colore != None:
         rand = FieldData(args.from_colore, "Randoms", file_type="CoLoRe")
-        rand.prepare_dat(
+        rand.prepare_data(
             args.zmin, args.zmax, args.downsampling, args.pixel_mask, args.nside
         )
 
