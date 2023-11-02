@@ -51,6 +51,10 @@ def getArgs():  # pragma: no cover
     )
 
     parser.add_argument(
+        "--grid-type", type=str, choices=["lightcone", "snapshot"], default="lightcone"
+    )
+
+    parser.add_argument(
         "--compute-npoles",
         nargs="*",
         type=int,
@@ -226,8 +230,8 @@ class FieldData:
         return self.label
 
     @property
-    def zfield(self):
-        """The zfield to read from input data is different depending on the file_type."""
+    def z_field(self):
+        """The z_field to read from input data is different depending on the file_type."""
         if self.file_type == "zcat":
             return "Z"
         elif self.file_type == "CoLoRe":
@@ -238,8 +242,8 @@ class FieldData:
             else:
                 return "Z_QSO_NO_RSD"
 
-    def open_fits(self, imock):
-        self.fits = fitsio.read(self.cat[imock])
+    def open_fits(self, i_mock):
+        self.fits = fitsio.read(self.cat[i_mock])
 
     def define_data_from_fits(self):
         """Method to define the data structure by reading input fits files."""
@@ -266,7 +270,7 @@ class FieldData:
             _file_size = len(self.fits)
             self.data["RA"][_index : _index + _file_size] = self.fits["RA"]
             self.data["DEC"][_index : _index + _file_size] = self.fits["DEC"]
-            self.data["Z"][_index : _index + _file_size] = self.fits[self.zfield]
+            self.data["Z"][_index : _index + _file_size] = self.fits[self.z_field]
 
             if self.rsd:
                 if self.velocity_boost is not None:
@@ -310,7 +314,7 @@ class FieldData:
         self.data = self.data[_mask]
 
     def apply_redshift_mask(self, zmin, zmax):
-        """Method to apply a redshfit mask to data.
+        """Method to apply a redshift mask to data.
 
         Args:
             zmin (float): Min. redshift for valid objects.
@@ -333,7 +337,7 @@ class FieldData:
         where p in (0,1) and N the cumulative distribution.
 
         Args:
-            file (str or Path): Input filem, will be read as dN/dzdOmega in deg^-2.
+            file (str or Path): Input file, will be read as dN/dzdOmega in deg^-2.
             factor (float, optional): Factor to increase or decrease the number of randoms generated. (Default: 1)
             pixel_mask (array of int, optional): Pixel mask in order to get the correct sky area. (Default: all_sky)
             nside (int, optional): nside of the pixel_mask pixelization.
@@ -353,9 +357,9 @@ class FieldData:
         N = interp1d(in_z, in_Nz)
         N_inv = interp1d(in_Nz, in_z)
 
-        pixarea = hp.pixelfunc.nside2pixarea(nside, degrees=True)
+        pix_area = hp.pixelfunc.nside2pixarea(nside, degrees=True)
         pixels = len(pixel_mask) if pixel_mask is not None else 48
-        area = pixarea * pixels
+        area = pix_area * pixels
         NRAND = int(quad(n, zmin, zmax)[0] * area * factor)
         self.define_data_from_size(NRAND)
 
@@ -518,7 +522,7 @@ class FieldData:
 
         Args:
             filename (str or Path)"""
-        logger.info(f"Writting catalogue {self.label} into {filename}")
+        logger.info(f"Writing catalogue {self.label} into {filename}")
         values = (self.data["RA"], self.data["DEC"], self.data["Z"])
         labels = ("RA", "DEC", "Z")
         dtypes = ("D", "D", "D")
@@ -545,7 +549,7 @@ class FieldData:
         hdulist.close()
 
     def prepare_data(self, zmin, zmax, downsampling, pixel_mask, nside):
-        """Method to prepare the data by reading it, applying masks and downsamplings
+        """Method to prepare the data by reading it, applying masks and downsampling
 
         Args:
             zmin (float):
@@ -853,7 +857,7 @@ def main(args=None):
         np.savetxt(args.out_dir / f"RD.dat", RD)
 
     if logging.root.level <= logging.DEBUG:  # pragma: no cover
-        logger.debug(f"Relative ellapsed time: {time.time() - start_computation}")
+        logger.debug(f"Relative elapsed time: {time.time() - start_computation}")
 
     if data == data2 and "RD" not in available_counts:
         shutil.copyfile(args.out_dir / f"DR.dat", args.out_dir / f"RD.dat")
