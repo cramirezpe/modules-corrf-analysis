@@ -71,14 +71,14 @@ class ReadCoLoRe:
             if self.param_cfg is None:
                 self.zmin = 0
             else:
-                self.zmin = self.param_cfg["global"]["z_min"]
+                self.zmin = self.param_cfg["global"].get("z_min", 0)
         else:  # pragma: no cover
             self.zmin = zmin
         if zmax is None:  # pragma: no cover
             if self.param_cfg is None:
                 self.zmax = 1000
             else:
-                self.zmax = self.param_cfg["global"]["z_max"]
+                self.zmax = self.param_cfg["global"].get("z_max", 10)
         else:  # pragma: no cover
             self.zmax = zmax
 
@@ -164,6 +164,10 @@ class ReadCoLoRe:
         Returns:
             Box size in Mpc/h
         """
+        # If snapshot, directly return.
+        if self.param_cfg["global"].get("l_box", None) is not None:
+            return self.param_cfg["global"]["l_box"]
+
         cosmo = astropy.cosmology.LambdaCDM(
             self.cosmo["h"] * 100,
             Om0=self.cosmo["omega_M"],

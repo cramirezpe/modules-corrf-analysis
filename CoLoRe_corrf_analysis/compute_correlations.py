@@ -14,6 +14,7 @@ import scipy.integrate as integrate
 import fitsio
 from astropy.io import fits
 from Corrfunc.mocks.DDsmu_mocks import DDsmu_mocks
+from Corrfunc.theory.DDsmu import DDsmu
 from scipy import interpolate
 import shutil
 import json
@@ -33,7 +34,10 @@ def getArgs():  # pragma: no cover
     )
 
     parser.add_argument(
-        "--data-format", type=str, choices=["CoLoRe", "zcat", "master"], default="zcat"
+        "--data-format",
+        type=str,
+        choices=["CoLoRe", "zcat", "master"],
+        default="zcat",
     )
 
     parser.add_argument(
@@ -47,11 +51,23 @@ def getArgs():  # pragma: no cover
     )
 
     parser.add_argument(
-        "--data2-format", type=str, choices=["CoLoRe", "zcat", "master"], default="zcat"
+        "--data2-format",
+        type=str,
+        choices=["CoLoRe", "zcat", "master"],
+        default="zcat",
     )
 
     parser.add_argument(
-        "--grid-type", type=str, choices=["lightcone", "snapshot"], default="lightcone"
+        "--grid-format",
+        type=str,
+        choices=["lightcone", "snapshot"],
+        default="lightcone",
+    )
+
+    parser.add_argument(
+        "--box-size",
+        type=float,
+        help="Size of the box (if snapshot)",
     )
 
     parser.add_argument(
@@ -204,7 +220,15 @@ class FieldData:
     """
 
     def __init__(
-        self, cat, label, file_type, rsd=False, reverse_RSD=False, velocity_boost=None
+        self,
+        cat,
+        label,
+        file_type,
+        grid_format="lightcone",
+        box_size: float = None,
+        rsd=False,
+        reverse_RSD=False,
+        velocity_boost=None,
     ):
         """
         Args:
@@ -215,6 +239,10 @@ class FieldData:
                 - "CoLoRe": CoLoRe srcs output files.
                 - "zcat": fits file with the fields "Z", "RA" and "DEC" in the first header.
                 - "master": LyaCoLoRe master file.
+            grid_format (str): Grid format. Options
+                - "lightcone": Read RA, DEC, Z
+                - "snapshot": Read X, Y, Z
+            box_size: box size if snapshot size used.
             rsd (bool, optional): Whether to include RSD in data (only for CoLoRe). (Default: False).
             reverse_RSD (bool, optional): Whether to reverse the effect of RSD (only for CoLoRe).
                 (Default: False)
@@ -225,6 +253,11 @@ class FieldData:
         self.rsd = rsd
         self.reverse_RSD = reverse_RSD
         self.velocity_boost = velocity_boost
+        self.grid_format = grid_format
+        self.box_size = box_size
+
+        if box_size is None and grid_format == "snapshot":
+            raise ValueError("Should provide box_size if grid_format=snapshot")
 
     def __str__(self):  # pragma: no cover
         return self.label
@@ -251,16 +284,29 @@ class FieldData:
         for i in range(len(self.cat)):
             self.open_fits(i)
             _cat_length += len(self.fits)
-        self.data = np.empty(
-            _cat_length,
-            dtype=[("RA", "f8"), ("DEC", "f8"), ("Z", "f8"), ("Weight", "f8")],
-        )
+
+        if self.grid_format == "lightcone":
+            self.data = np.empty(
+                _cat_length,
+                dtype=[("RA", "f8"), ("DEC", "f8"), ("Z", "f8"), ("Weight", "f8")],
+            )
+        else:  # snapshot
+            self.data = np.empty(
+                _cat_length,
+                dtype=[("X", "f8"), ("Y", "f8"), ("Z", "f8"), ("Weight", "f8")],
+            )
 
     def define_data_from_size(self, N):
         """Method to define the data structure by its length."""
-        self.data = np.empty(
-            N, dtype=[("RA", "f8"), ("DEC", "f8"), ("Z", "f8"), ("Weight", "f8")]
-        )
+        if self.grid_format == "lightcone":
+            self.data = np.empty(
+                N, dtype=[("RA", "f8"), ("DEC", "f8"), ("Z", "f8"), ("Weight", "f8")]
+            )
+        else:  # snapshot
+            self.data = np.empty(
+                N,
+                dtype=[("X", "f8"), ("Y", "f8"), ("Z", "f8"), ("Weight", "f8")],
+            )
 
     def fill_data(self):
         """Fill the data arrays from the input source."""
@@ -268,9 +314,15 @@ class FieldData:
         for i in range(len(self.cat)):
             self.open_fits(i)
             _file_size = len(self.fits)
-            self.data["RA"][_index : _index + _file_size] = self.fits["RA"]
-            self.data["DEC"][_index : _index + _file_size] = self.fits["DEC"]
-            self.data["Z"][_index : _index + _file_size] = self.fits[self.z_field]
+
+            if self.grid_format == "lightcone":
+                self.data["RA"][_index : _index + _file_size] = self.fits["RA"]
+                self.data["DEC"][_index : _index + _file_size] = self.fits["DEC"]
+                self.data["Z"][_index : _index + _file_size] = self.fits[self.z_field]
+            else:  # snapshot
+                self.data["X"][_index : _index + _file_size] = self.fits["X"]
+                self.data["Y"][_index : _index + _file_size] = self.fits["Y"]
+                self.data["Z"][_index : _index + _file_size] = self.fits["Z"]
 
             if self.rsd:
                 if self.velocity_boost is not None:
@@ -282,8 +334,13 @@ class FieldData:
                     boost *= -1
 
                 if self.file_type == "CoLoRe":
-                    dz = self.fits["DZ_RSD"]
-                    self.data["Z"][_index : _index + _file_size] += boost*dz
+                    if self.grid_format == "lightcone":
+                        dz = self.fits["DZ_RSD"]
+                        self.data["Z"][_index : _index + _file_size] += boost * dz
+                    else:  # snapshot
+                        dx = self.fits["DX_RSD"]
+                        self.data["X"][_index : _index + _file_size] += boost * dx
+
                 if self.file_type == "master" and (
                     self.reverse_RSD or self.velocity_boost
                 ):
@@ -372,7 +429,8 @@ class FieldData:
 
         Args:
             data (FieldData): data to use for reading the redshift distribution.
-            factor (float, optional): Factor to increase or decrease the number of randoms generated. (Default: 1)"""
+            factor (float, optional): Factor to increase or decrease the number of randoms generated. (Default: 1)
+        """
         from scipy.interpolate import interp1d
 
         logger.info(f"Generating random catalog from {data.label} to {self.label}")
@@ -393,6 +451,20 @@ class FieldData:
     def generate_random_positions(self, pixel_mask=None, nside=None, method="pixel"):
         logger.info(f"Computing random positions for field {self.label}")
         NRAND = len(self.data)
+
+        if self.grid_format == "snapshot":
+            ran1 = np.random.random(int(NRAND))
+            ran2 = np.random.random(int(NRAND))
+            ran3 = np.random.random(int(NRAND))
+
+            # @ Finish the generation of randoms in cartesian
+            # I need to look at how to get the sizes of the box first
+            self.data["X"] = ran1 * self.box_size
+            self.data["Y"] = ran2 * self.box_size
+            self.data["Z"] = ran3 * self.box_size
+
+            return
+
         if pixel_mask is None:
             logger.info("No pixel mask added. Computing randoms for the full sky")
             ran1 = np.random.random(int(NRAND))
@@ -424,7 +496,7 @@ class FieldData:
         logger.info(
             "Using dice mode:\nComputing randoms for full sky and discarding the ones not in footprint."
         )
-        sky_fraction = len(pixel_mask) / (12 * nside ** 2)
+        sky_fraction = len(pixel_mask) / (12 * nside**2)
         logger.debug(f"Sky fraction: {sky_fraction}")
 
         valids = 0
@@ -523,8 +595,14 @@ class FieldData:
         Args:
             filename (str or Path)"""
         logger.info(f"Writing catalogue {self.label} into {filename}")
-        values = (self.data["RA"], self.data["DEC"], self.data["Z"])
-        labels = ("RA", "DEC", "Z")
+
+        if self.grid_format == "lightcone":
+            values = (self.data["RA"], self.data["DEC"], self.data["Z"])
+            labels = ("RA", "DEC", "Z")
+        else:  # snapshot
+            values = (self.data["X"], self.data["Y"], self.data["Z"])
+            labels = ("X", "Y", "Z")
+
         dtypes = ("D", "D", "D")
 
         cols = []
@@ -570,13 +648,18 @@ class FieldData:
             self.apply_downsampling(downsampling)
             logger.debug(f"Length of {self.label} after downsampling: {len(self.data)}")
 
-        self.apply_redshift_mask(zmin, zmax)
-        logger.debug(f"Length of {self.label} after redshift mask: {len(self.data)}")
+        if self.grid_format == "lightcone":
+            self.apply_redshift_mask(zmin, zmax)
+            logger.debug(
+                f"Length of {self.label} after redshift mask: {len(self.data)}"
+            )
 
-        if pixel_mask != None:
-            logger.debug(f"Applying pixel mask")
-            self.apply_pixel_mask(pixel_mask, nside)
-            logger.debug(f"Length of {self.label} after pixel mask: {len(self.data)}")
+            if pixel_mask != None:
+                logger.debug(f"Applying pixel mask")
+                self.apply_pixel_mask(pixel_mask, nside)
+                logger.debug(
+                    f"Length of {self.label} after pixel mask: {len(self.data)}"
+                )
 
 
 def main(args=None):
@@ -603,12 +686,16 @@ def main(args=None):
     if (args.randoms2 != None) and (args.data2 == None):  # pragma: no cover
         raise ValueError("If two randoms are provided, two datasets are required.")
 
-    z = np.arange(args.zmin_covd, args.zmax_covd, args.zstep_covd)
-    covd = []
-    for i in range(len(z)):
-        covd.append(cov(z[i]))
-    covd = np.array(covd)
-    f = interpolate.interp1d(z, covd)
+    if args.grid_format == "snapshot" and args.data_format not in ("CoLoRe", "cartcat"):
+        raise ValueError("Snapshot grid format only available for CoLoRe data format.")
+
+    if args.grid_format == "lightcone":
+        z = np.arange(args.zmin_covd, args.zmax_covd, args.zstep_covd)
+        covd = []
+        for i in range(len(z)):
+            covd.append(cov(z[i]))
+        covd = np.array(covd)
+        f = interpolate.interp1d(z, covd)
 
     Path(args.out_dir).mkdir(exist_ok=True)
 
@@ -648,6 +735,8 @@ def main(args=None):
             args.data,
             "Data",
             file_type=args.data_format,
+            grid_format=args.grid_format,
+            box_size=args.box_size,
             rsd=not (args.data_norsd),
             reverse_RSD=args.reverse_RSD,
             velocity_boost=args.velocity_boost,
@@ -655,7 +744,8 @@ def main(args=None):
         data.prepare_data(
             args.zmin, args.zmax, args.data_downsampling, args.pixel_mask, args.nside
         )
-        data.compute_cov(f)
+        if args.grid_format == "lightcone":
+            data.compute_cov(f)
         data_to_use.add(data)
 
     if (
@@ -665,6 +755,8 @@ def main(args=None):
             args.data2,
             "Data2",
             file_type=args.data2_format,
+            grid_format=args.grid_format,
+            box_size=args.box_size,
             rsd=not (args.data2_norsd),
             reverse_RSD=args.reverse_RSD2,
             velocity_boost=args.velocity_boost,
@@ -672,7 +764,8 @@ def main(args=None):
         data2.prepare_data(
             args.zmin, args.zmax, args.data_downsampling, args.pixel_mask, args.nside
         )
-        data2.compute_cov(f)
+        if args.grid_format == "lightcone":
+            data2.compute_cov(f)
         data_to_use.add(data2)
     else:
         data2 = data
@@ -680,7 +773,13 @@ def main(args=None):
     if "R1" in to_compute or (
         "R2" in to_compute and args.randoms == None and not args.generate_randoms2
     ):
-        rand = FieldData(args.randoms, "Randoms", file_type="zcat")
+        rand = FieldData(
+            args.randoms,
+            "Randoms",
+            file_type="zcat",
+            grid_format=args.grid_format,
+            box_size=args.box_size,
+        )
         if args.randoms != None:
             rand.prepare_data(
                 args.zmin,
@@ -690,34 +789,45 @@ def main(args=None):
                 args.nside,
             )
         else:
-            if args.randoms_from_nz_file != None:  # pragma: no cover
-                rand.generate_random_redshifts_from_file(
-                    args.randoms_from_nz_file,
-                    zmin=args.zmin,
-                    zmax=args.zmax,
-                    factor=args.randoms_factor,
-                    pixel_mask=args.pixel_mask,
-                    nside=args.nside,
-                )
+            if args.grid_format == "lightcone":
+                if args.randoms_from_nz_file != None:  # pragma: no cover
+                    rand.generate_random_redshifts_from_file(
+                        args.randoms_from_nz_file,
+                        zmin=args.zmin,
+                        zmax=args.zmax,
+                        factor=args.randoms_factor,
+                        pixel_mask=args.pixel_mask,
+                        nside=args.nside,
+                    )
+                else:
+                    rand.define_data_from_size(len(data.data))
+                    rand.generate_random_redshifts_from_data(
+                        data, factor=args.randoms_factor
+                    )
             else:
                 rand.define_data_from_size(len(data.data))
-                rand.generate_random_redshifts_from_data(
-                    data, factor=args.randoms_factor
-                )
-            rand.generate_random_positions(
+            rand.generate_random_positions(  # will also work for cartesian
                 pixel_mask=args.pixel_mask,
                 nside=args.nside,
                 method=args.random_positions_method,
             )
+
             rand.cat = []
             if args.store_generated_rands:
                 rand.store_data_in_cat(Path(args.out_dir) / (rand.label + ".fits"))
-        rand.compute_cov(f)
+        if args.grid_format == "lightcone":
+            rand.compute_cov(f)
         data_to_use.add(rand)
 
     if "R2" in to_compute:
         if args.randoms2 != None:
-            rand2 = FieldData(args.randoms2, "Randoms2", file_type="zcat")
+            rand2 = FieldData(
+                args.randoms2,
+                "Randoms2",
+                file_type="zcat",
+                grid_format=args.grid_format,
+                box_size=args.box_size,
+            )
             rand2.prepare_data(
                 args.zmin,
                 args.zmax,
@@ -727,22 +837,33 @@ def main(args=None):
             )
             rand2.compute_cov(f)
         elif args.generate_randoms2:  # pragma: no cover
-            rand2 = FieldData(args.randoms2, "Randoms2", file_type="zcat")
-            if args.randoms_from_nz_file != None:
-                rand2.generate_random_redshifts_from_file(
-                    args.randoms_from_nz_file,
-                    zmin=args.zmin,
-                    zmax=args.zmax,
-                    factor=args.randoms_factor,
-                    pixel_mask=args.pixel_mask,
-                    nside=args.nside,
-                )
+            rand2 = FieldData(
+                args.randoms2,
+                "Randoms2",
+                file_type="zcat",
+                grid_format=args.grid_format,
+                box_size=args.box_size,
+            )
+            if args.grid_format == "lightcone":
+                if args.randoms_from_nz_file != None:
+                    rand2.generate_random_redshifts_from_file(
+                        args.randoms_from_nz_file,
+                        zmin=args.zmin,
+                        zmax=args.zmax,
+                        factor=args.randoms_factor,
+                        pixel_mask=args.pixel_mask,
+                        nside=args.nside,
+                    )
+                else:
+                    rand2.define_data_from_size(len(data2.data))
+                    rand2.generate_random_redshifts_from_data(
+                        data2, factor=args.randoms_factor
+                    )
+                rand2.compute_cov(f)
             else:
-                rand2.define_data_from_size(len(data2.data))
-                rand2.generate_random_redshifts_from_data(
-                    data2, factor=args.randoms_factor
-                )
-            rand2.generate_random_positions(
+                rand.define_data_from_size(len(data.data))
+
+            rand2.generate_random_positions(  # will also work for cartesian
                 pixel_mask=args.pixel_mask,
                 nside=args.nside,
                 method=args.random_positions_method,
@@ -750,7 +871,8 @@ def main(args=None):
             rand2.cat = []
             if args.store_generated_rands:
                 rand2.store_data_in_cat(Path(args.out_dir) / (rand2.label + ".fits"))
-            rand2.compute_cov(f)
+            if args.grid_format == "lightcone":
+                rand2.compute_cov(f)
         else:
             rand2 = rand
             data_to_use.add(rand2)
@@ -778,82 +900,150 @@ def main(args=None):
 
     if "DD" not in available_counts:
         logger.info("Computing DD...")
-        DD = DDsmu_mocks(
-            autocorr=data == data2,
-            cosmology=2,
-            nthreads=args.nthreads,
-            mu_max=args.mu_max,
-            nmu_bins=args.nmu_bins,
-            binfile=bins2p,
-            RA1=data.data["RA"],
-            DEC1=data.data["DEC"],
-            CZ1=data.cov,
-            RA2=data2.data["RA"],
-            DEC2=data2.data["DEC"],
-            CZ2=data2.cov,
-            is_comoving_dist=True,
-            verbose=True,
-        )
+        if args.grid_format == "lightcone":
+            DD = DDsmu_mocks(
+                autocorr=data == data2,
+                cosmology=2,
+                nthreads=args.nthreads,
+                mu_max=args.mu_max,
+                nmu_bins=args.nmu_bins,
+                binfile=bins2p,
+                RA1=data.data["RA"],
+                DEC1=data.data["DEC"],
+                CZ1=data.cov,
+                RA2=data2.data["RA"],
+                DEC2=data2.data["DEC"],
+                CZ2=data2.cov,
+                is_comoving_dist=True,
+                verbose=True,
+            )
+        else:  # snapshot
+            DD = DDsmu(
+                autocorr=data == data2,
+                nthreads=args.nthreads,
+                mu_max=args.mu_max,
+                nmu_bins=args.nmu_bins,
+                binfile=bins2p,
+                X1=data.data["X"],
+                Y1=data.data["Y"],
+                Z1=data.data["Z"],
+                X2=data2.data["X"],
+                Y2=data2.data["Y"],
+                Z2=data2.data["Z"],
+                boxsize=args.box_size,
+                verbose=True,
+            )
         np.savetxt(args.out_dir / f"DD.dat", DD)
 
     if "DR" not in available_counts:
         logger.info("Computing DR...")
-        DR = DDsmu_mocks(
-            autocorr=0,
-            cosmology=2,
-            nthreads=args.nthreads,
-            mu_max=args.mu_max,
-            nmu_bins=args.nmu_bins,
-            binfile=bins2p,
-            RA1=data.data["RA"],
-            DEC1=data.data["DEC"],
-            CZ1=data.cov,
-            RA2=rand2.data["RA"],
-            DEC2=rand2.data["DEC"],
-            CZ2=rand2.cov,
-            is_comoving_dist=True,
-            verbose=True,
-        )
+        if args.grid_format == "lightcone":
+            DR = DDsmu_mocks(
+                autocorr=0,
+                cosmology=2,
+                nthreads=args.nthreads,
+                mu_max=args.mu_max,
+                nmu_bins=args.nmu_bins,
+                binfile=bins2p,
+                RA1=data.data["RA"],
+                DEC1=data.data["DEC"],
+                CZ1=data.cov,
+                RA2=rand2.data["RA"],
+                DEC2=rand2.data["DEC"],
+                CZ2=rand2.cov,
+                is_comoving_dist=True,
+                verbose=True,
+            )
+        else:  # snapshot
+            DR = DDsmu(
+                autocorr=0,
+                nthreads=args.nthreads,
+                mu_max=args.mu_max,
+                nmu_bins=args.nmu_bins,
+                binfile=bins2p,
+                X1=data.data["X"],
+                Y1=data.data["Y"],
+                Z1=data.data["Z"],
+                X2=rand2.data["X"],
+                Y2=rand2.data["Y"],
+                Z2=rand2.data["Z"],
+                boxsize=args.box_size,
+                verbose=True,
+            )
         np.savetxt(args.out_dir / f"DR.dat", DR)
 
     if "RR" not in available_counts:
         logger.info("Computing RR...")
-        RR = DDsmu_mocks(
-            autocorr=rand == rand2,
-            cosmology=2,
-            nthreads=args.nthreads,
-            mu_max=args.mu_max,
-            nmu_bins=args.nmu_bins,
-            binfile=bins2p,
-            RA1=rand.data["RA"],
-            DEC1=rand.data["DEC"],
-            CZ1=rand.cov,
-            RA2=rand2.data["RA"],
-            DEC2=rand2.data["DEC"],
-            CZ2=rand2.cov,
-            is_comoving_dist=True,
-            verbose=True,
-        )
+        if args.grid_format == "lightcone":
+            RR = DDsmu_mocks(
+                autocorr=rand == rand2,
+                cosmology=2,
+                nthreads=args.nthreads,
+                mu_max=args.mu_max,
+                nmu_bins=args.nmu_bins,
+                binfile=bins2p,
+                RA1=rand.data["RA"],
+                DEC1=rand.data["DEC"],
+                CZ1=rand.cov,
+                RA2=rand2.data["RA"],
+                DEC2=rand2.data["DEC"],
+                CZ2=rand2.cov,
+                is_comoving_dist=True,
+                verbose=True,
+            )
+        else:  # snapshot
+            RR = DDsmu(
+                autocorr=rand == rand2,
+                nthreads=args.nthreads,
+                mu_max=args.mu_max,
+                nmu_bins=args.nmu_bins,
+                binfile=bins2p,
+                X1=rand.data["X"],
+                Y1=rand.data["Y"],
+                Z1=rand.data["Z"],
+                X2=rand2.data["X"],
+                Y2=rand2.data["Y"],
+                Z2=rand2.data["Z"],
+                boxsize=args.box_size,
+                verbose=True,
+            )
         np.savetxt(args.out_dir / f"RR.dat", RR)
 
     if "RD" not in available_counts and data2 != data:
         logger.info("Computing RD...")
-        RD = DDsmu_mocks(
-            autocorr=0,
-            cosmology=2,
-            nthreads=args.nthreads,
-            mu_max=args.mu_max,
-            nmu_bins=args.nmu_bins,
-            binfile=bins2p,
-            RA1=rand.data["RA"],
-            DEC1=rand.data["DEC"],
-            CZ1=rand.cov,
-            RA2=data2.data["RA"],
-            DEC2=data2.data["DEC"],
-            CZ2=data2.cov,
-            is_comoving_dist=True,
-            verbose=True,
-        )
+        if args.grid_format == "lightcone":
+            RD = DDsmu_mocks(
+                autocorr=0,
+                cosmology=2,
+                nthreads=args.nthreads,
+                mu_max=args.mu_max,
+                nmu_bins=args.nmu_bins,
+                binfile=bins2p,
+                RA1=rand.data["RA"],
+                DEC1=rand.data["DEC"],
+                CZ1=rand.cov,
+                RA2=data2.data["RA"],
+                DEC2=data2.data["DEC"],
+                CZ2=data2.cov,
+                is_comoving_dist=True,
+                verbose=True,
+            )
+        else:  # snapshot
+            RD = DDsmu(
+                autocorr=0,
+                nthreads=args.nthreads,
+                mu_max=args.mu_max,
+                nmu_bins=args.nmu_bins,
+                binfile=bins2p,
+                X1=rand.data["X"],
+                Y1=rand.data["Y"],
+                Z1=rand.data["Z"],
+                X2=data2.data["X"],
+                Y2=data2.data["Y"],
+                Z2=data2.data["Z"],
+                boxsize=args.box_size,
+                verbose=True,
+            )
         np.savetxt(args.out_dir / f"RD.dat", RD)
 
     if logging.root.level <= logging.DEBUG:  # pragma: no cover
