@@ -701,6 +701,8 @@ def main(args=None):
 
     # Logic for which fields I need to incorporate
     available_counts = FileFuncs.get_available_count_files(args.out_dir)
+    logger.info(f"Already available counts:\n\t{available_counts}")
+
     to_compute = set()
     if args.data2 != None:  # Cross-correlation
         if "DD" not in available_counts:
