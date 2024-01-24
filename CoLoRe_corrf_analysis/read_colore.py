@@ -31,6 +31,7 @@ class ReadCoLoRe:
         param_cfg_filename=None,
         zmin=None,
         zmax=None,
+        snapshot=False,
     ):
         """Class to read CoLoRe sims and compute relevant statistics.
 
@@ -48,6 +49,7 @@ class ReadCoLoRe:
         self.source = source
 
         self.param_cfg_filename = param_cfg_filename
+        self.snapshot = snapshot
 
         if bias_filename is None:  # pragma: no cover
             try:
@@ -316,9 +318,12 @@ class ReadCoLoRe:
         Returns:
             Interp1d object for bias.
         """
-        bias_z, bias_bz = np.loadtxt(self.bias_filename, unpack=True)
-
-        return interp1d(bias_z, bias_bz, fill_value="extrapolate")
+        if self.snapshot:
+            bias = self.param_cfg[f'srcs{self.source}']['bias']
+            return interp1d([0, 10], [bias, bias], fill_value="extrapolate")
+        else:
+            bias_z, bias_bz = np.loadtxt(self.bias_filename, unpack=True)
+            return interp1d(bias_z, bias_bz, fill_value="extrapolate")
 
     def get_a_eq(self):  # pragma: no cover
         """Computes and returns a_eq as computed in CoLoRe code:
@@ -467,6 +472,7 @@ class ComputeModelsCoLoRe(ReadCoLoRe):
         smooth_factor_analysis=0.35,
         analysis_bin_size=5,
         apply_lognormal=True,
+        snapshot=False,
     ):
         super().__init__(
             box_path=box_path,
@@ -476,6 +482,7 @@ class ComputeModelsCoLoRe(ReadCoLoRe):
             param_cfg_filename=param_cfg_filename,
             zmin=zmin,
             zmax=zmax,
+            snapshot=snapshot,
         )
         """ Class to compute CoLoRe theoretical models with and without RSD.
 

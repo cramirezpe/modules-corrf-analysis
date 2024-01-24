@@ -17,6 +17,7 @@ class Plots:
         """
 
         fitted_region = (fitter.rmin[pole], fitter.rmax[pole])
+        shown_region = (fitter.r[0], fitter.r[-1])
 
         bias = fitter.out.params["bias"].value
         if fitter.cross:
@@ -37,6 +38,48 @@ class Plots:
             smooth_factor_cross=fitter.out.params["smooth_factor_cross"].value,
             scale_factor=fitter.out.params["scale_factor"].value,
             fitted_region=fitted_region,
+            shown_region=shown_region,
+            plot_args=plot_args,
+            reverse_rsd=fitter.reverse_rsd,
+            reverse_rsd2=fitter.reverse_rsd2,
+            no_labels=no_labels,
+        )
+
+    @classmethod
+    def plot_best_fit_pk(cls, fitter, pole, ax=None, plot_args=dict(), no_labels=False, kmin=None, kmax=None):
+        """
+        fitter (module_files_plots.Fitter object): Fitter object storing the fit we want to plot results of.
+        pole (int): Multipole we want to plot.
+        ax (matplotlib.axes._subplots.AxesSubplot, optional): Axis to use. (Default: Create a new axis).
+        plot_args (dict, optional): Extra arguments for the plotting (e.g: c='C0'). (Default: dict()).
+        """
+
+        fitted_region = (fitter.kmin[pole], fitter.kmax[pole])
+        shown_region = (
+            fitter.k[0] if kmin is None else kmin, 
+            fitter.k[-1] if kmax is None else kmax,
+        )
+
+        bias = fitter.out.params["bias"].value
+        if fitter.cross:
+            bias2 = fitter.out.params["bias2"].value
+        else:
+            bias2 = bias
+        cls.plot_theory_pk(
+            pole=pole,
+            z=fitter.out.params["z"].value,
+            theory=fitter.theory,
+            ax=ax,
+            bias=bias,
+            bias2=bias2,
+            rsd=fitter.rsd,
+            rsd2=fitter.rsd2,
+            smooth_factor=fitter.out.params["smooth_factor"].value,
+            smooth_factor_rsd=fitter.out.params["smooth_factor_rsd"].value,
+            smooth_factor_cross=fitter.out.params["smooth_factor_cross"].value,
+            scale_factor=fitter.out.params["scale_factor"].value,
+            fitted_region=fitted_region,
+            shown_region=shown_region,
             plot_args=plot_args,
             reverse_rsd=fitter.reverse_rsd,
             reverse_rsd2=fitter.reverse_rsd2,
@@ -59,6 +102,7 @@ class Plots:
         rsd=True,
         rsd2=None,
         fitted_region=(0, 301),
+        shown_region=(0, 301),
         reverse_rsd=False,
         reverse_rsd2=False,
         no_labels=False,
@@ -105,8 +149,8 @@ class Plots:
             )
         )
 
-        msk = theory.r < 301
-        msk_fitted = theory.r > fitted_region[0]
+        msk = (theory.r < shown_region[1]) & (theory.r > shown_region[0])
+        msk_fitted = msk & (theory.r > fitted_region[0])
         msk_fitted &= theory.r < fitted_region[1]
 
         dashed_plot_args = dict(plot_args)
@@ -124,6 +168,74 @@ class Plots:
             ax.set_ylabel(r"$r^2 \xi(r)$")
 
         return theory.r[msk], theory.r[msk] ** 2 * xi_th[msk]
+
+    @staticmethod
+    def plot_theory_pk(
+        pole,
+        z,
+        theory,
+        ax=None,
+        plot_args=dict(),
+        bias=None,
+        bias2=None,
+        smooth_factor=None,
+        smooth_factor_rsd=None,
+        smooth_factor_cross=None,
+        scale_factor=1,
+        rsd=True,
+        rsd2=None,
+        fitted_region=(0, 301),
+        shown_region=(0.01, 2),
+        reverse_rsd=False,
+        reverse_rsd2=False,
+        no_labels=False,
+    ):
+        if ax is None:
+            fig, ax = plt.subplots()
+        plot_args = {**dict(c="C1"), **plot_args}
+
+        # if bias is None:
+        #     bias = theory.bias(z)
+
+        pk_th = np.asarray(
+            scale_factor
+            * theory.get_npole_pk(
+                n=pole,
+                z=z,
+                bias=bias,
+                bias2=bias2,
+                rsd=rsd,
+                rsd2=rsd2,
+                smooth_factor=smooth_factor,
+                smooth_factor_rsd=smooth_factor_rsd,
+                smooth_factor_cross=smooth_factor_cross,
+                reverse_rsd=reverse_rsd,
+                reverse_rsd2=reverse_rsd2,
+            )
+        )
+
+        msk = (theory.k < shown_region[1]) & (theory.k > shown_region[0])
+        msk_fitted = msk & (theory.k > fitted_region[0])
+        msk_fitted &= theory.k < fitted_region[1]
+        
+        dashed_plot_args = dict(plot_args)
+        dashed_plot_args["label"] = None
+        dashed_plot_args["ls"] = "--"
+
+        ax.plot(theory.k[msk], pk_th[msk], **dashed_plot_args)
+        ax.plot(
+            theory.k[msk_fitted],
+            pk_th[msk_fitted],
+            **plot_args
+        )
+        if not no_labels:
+            ax.set_xlabel(r"$k \, [{\rm h/Mpc}]$")
+            ax.set_ylabel(r"$P(k)$")
+
+        ax.set_xscale('log')
+        ax.set_yscale('log')
+
+        return theory.k[msk], pk_th[msk]
 
     @staticmethod
     def get_xi(pole, boxes, jacknife=False):

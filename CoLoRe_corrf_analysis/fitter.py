@@ -357,3 +357,169 @@ class Fitter:
             numalign="decimal",
             stralign="left",
         )
+
+class FitterPK(Fitter):
+    def __init__(
+        self,
+        boxes,
+        z,
+        poles,
+        theory,
+        rsd,
+        rsd2=None,
+        bias0=None,
+        bias20=None,
+        smooth_factor0=None,
+        smooth_factor_rsd0=None,
+        smooth_factor_cross0=None,
+        kmin=None,
+        kmax=None,
+        reverse_rsd=False,
+        reverse_rsd2=False,
+    ):
+        """Fitter class used to fit bias and smooth_factors
+
+        Args:
+            boxes (1D array of pk_helper.PKComputations objects): Boxes with the data information.
+            z (float): Redshift to use for the model.
+            poles (array of int): Multipoles to use for the fitter.
+            theory (read_theory_to_xi.ComputeModelsCoLoRe object, optional): Theory object used for the theoretical model.
+            rsd (bool): Whether to use RSD or not.
+            rsd2 (bool): For cross-correlations, use RSD for second field. (Default: None -> auto-correlation)
+            bias0 (float, optional): Initial value for bias. (Default: Read it from input bias).
+            bias20 (float, optional): For cross-correlations, initial value for bias of field2. (Default: None -> auto-correlation)
+            smooth_factor0 (float, optional): Initial value for smooth_factor. (Default: Use the one from ComputeModelsCoLoRe.__init__).
+            smooth_factor_rsd0 (float, optional): Initial value for smooth_factor_rsd. (Default: Use the one from ComputeModelsCoLoRe.__init__).
+            smooth_factor_cross0 (float, optional): Initial value for smooth_factor_cross. (Default: Use the one from ComputeModelsCoLoRe.__init__).
+            rmin (dict, optional): Min r for the fits. (Default: {0:10, 2:40}, 10 for the monopole, 40 for the quadrupole).
+            rmax (dict, optional): Max r for the fits. (Default: {0:200, 2:200}, 200 both for monopole and quadrupole).
+            reverse_rsd (bool, optional): Reverse redshift (rsd terms will be negative). (Default: False)
+            reverse_rsd2 (bool, optional): Reverse redshift for second field in cross-correlations (rsd terms negative). (Default: False)
+        """
+        self.boxes = boxes
+        self.z0 = z
+        self.poles = poles
+
+        self.rsd = rsd
+        self.rsd2 = rsd2
+        self.reverse_rsd = reverse_rsd
+        self.reverse_rsd2 = reverse_rsd2
+
+        if self.rsd2 != None:
+            logger.info("Second RSD provided. Cross-correlation mode enabled")
+            self.cross = True
+        else:
+            self.cross = False
+
+        self.theory = theory
+
+        if bias0 is None:  # pragma: no cover
+            self.bias0 = theory.bias(z)
+        else:
+            self.bias0 = bias0
+
+        self.bias20 = bias20
+        if (self.bias20 is None) and (self.cross):  # pragma: no cover
+            self.bias20 = self.bias0
+
+        if smooth_factor0 is None:  # pragma: no cover
+            self.smooth_factor0 = theory.smooth_factor
+        else:
+            self.smooth_factor0 = smooth_factor0
+
+        if smooth_factor_rsd0 is None:  # pragma: no cover
+            self.smooth_factor_rsd0 = theory.smooth_factor_rsd
+        else:
+            self.smooth_factor_rsd0 = smooth_factor_rsd0
+
+        if smooth_factor_cross0 is None:  # pragma: no cover
+            self.smooth_factor_cross0 = theory.smooth_factor_cross
+        else:
+            self.smooth_factor_cross0 = smooth_factor_cross0
+
+        self.k = self.boxes[0].k
+        self.kmin = kmin if kmin is not None else {0: 0, 2: 0}
+        self.kmax = kmax if kmax is not None else {0: 1, 2: 1}
+
+        self.masks = dict()
+        for _pole in poles:
+            self.masks[_pole] = (self.k > self.kmin[_pole]) & (
+                self.k < self.kmax[_pole]
+            )
+
+    @cached_property
+    def pks(self):
+        """Method to combine data from all the different boxes.
+
+        Returns:
+            Dict of 2D arrays (one per npole) with power spectrum for each box.
+        """
+        pks = dict()
+        for pole in self.poles:
+            pks[pole] = np.array([box.compute_npole(pole) for box in self.boxes])
+        return pks
+
+    @cached_property
+    def data(self):
+        """Method to obtain the power spectrum mean for all the different boxes.
+
+        Returns:
+            1D array with the power spectrum.
+        """
+        data_ = np.array([])
+        for _pole in self.poles:
+            data_ = np.append(data_, self.pks[_pole].mean(axis=0)[self.masks[_pole]])
+        return data_
+
+    @cached_property
+    def err(self):
+        """Method to obtain the power spectrum error for all the different boxes.
+
+        Returns:
+            1D array with the error.
+        """
+        err_ = np.array([])
+        for _pole in self.poles:
+            if len(self.boxes) == 1:
+                err_ = np.append(err_, np.ones(self.masks[_pole].sum()))
+            else:
+                err_ = np.append(
+                    err_,
+                    self.pks[_pole].std(axis=0, ddof=1)[self.masks[_pole]]
+                    / len(self.boxes),
+                )
+        return err_
+
+    def model(self, z, bias, smooth_factor, smooth_factor_rsd, smooth_factor_cross, pole, bias2):
+        """Method to get an interpolation object with a given model.
+
+        Args:
+            z (float): Redshift to use for the model.
+            bias (float): Bias to use for the model.
+            smooth_factor (float, optional): Smoothing prefactor for the lognormalized field dd (<delta_LN delta_LN>), as the 1.1 in "double rsm2_gg=par->r2_smooth+1.1*pow(par->l_box/par->n_grid,2)/12.".
+            smooth_factor_rsd (float, optional): Smoothing prefactor for the matter matter field. <delta_L delta_L>.
+            smooth_factor_cross (float, optional): Smoothing prefactor for the matter galaxy (dm) field. <delta_LN delta_L>.
+            pole (int): Multipole to compute.
+            bias2 (float): Bias for the second model, or None.
+
+        Returns:
+            np.ndarray with model power spectra
+        """
+        if not self.cross:
+            bias2 = None
+
+        pk = self.theory.get_npole_pk(
+            n=pole,
+            z=z,
+            bias=bias,
+            bias2=bias2,
+            rsd=self.rsd,
+            rsd2=self.rsd2,
+            smooth_factor=smooth_factor,
+            smooth_factor_rsd=smooth_factor_rsd,
+            smooth_factor_cross=smooth_factor_cross,
+            reverse_rsd=self.reverse_rsd,
+            reverse_rsd2=self.reverse_rsd2,
+        )
+        model_pk = interp1d(self.theory.k, pk)
+        return model_pk(self.k)
