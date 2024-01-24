@@ -66,6 +66,7 @@ def getArgs():  # pragma: no cover
 
     parser.add_argument(
         "--box-size",
+        default=None,
         type=float,
         help="Size of the box (if snapshot)",
     )
@@ -133,7 +134,7 @@ def getArgs():  # pragma: no cover
 
     parser.add_argument("--out-dir", type=Path, required=True, help="Output dir")
 
-    parser.add_argument("--nthreads", type=int, default=8)
+    parser.add_argument("--nthreads", type=int, default=256)
 
     parser.add_argument("--mu-max", type=float, default=1.0)
 
@@ -207,6 +208,12 @@ def getArgs():  # pragma: no cover
         "--log-level",
         default="WARNING",
         choices=["CRITICAL", "ERROR", "WARNING", "INFO", "DEBUG", "NOTSET"],
+    )
+
+    parser.add_argument(
+        "--overwrite",
+        action="store_true",
+        help="Overwrite existing files",
     )
 
     args = parser.parse_args()
@@ -320,9 +327,10 @@ class FieldData:
                 self.data["DEC"][_index : _index + _file_size] = self.fits["DEC"]
                 self.data["Z"][_index : _index + _file_size] = self.fits[self.z_field]
             else:  # snapshot
-                self.data["X"][_index : _index + _file_size] = self.fits["X"]
-                self.data["Y"][_index : _index + _file_size] = self.fits["Y"]
-                self.data["Z"][_index : _index + _file_size] = self.fits["Z"]
+                # We rotate the axes to have l.o.s in Z (as required by corrf)
+                self.data["X"][_index : _index + _file_size] = self.fits["Y"]
+                self.data["Y"][_index : _index + _file_size] = self.fits["Z"]
+                self.data["Z"][_index : _index + _file_size] = self.fits["X"]
 
             if self.rsd:
                 if self.velocity_boost is not None:
@@ -339,7 +347,7 @@ class FieldData:
                         self.data["Z"][_index : _index + _file_size] += boost * dz
                     else:  # snapshot
                         dx = self.fits["DX_RSD"]
-                        self.data["X"][_index : _index + _file_size] += boost * dx
+                        self.data["Z"][_index : _index + _file_size] += boost * dx
 
                 if self.file_type == "master" and (
                     self.reverse_RSD or self.velocity_boost
@@ -700,8 +708,11 @@ def main(args=None):
     Path(args.out_dir).mkdir(exist_ok=True)
 
     # Logic for which fields I need to incorporate
-    available_counts = FileFuncs.get_available_count_files(args.out_dir)
-    logger.info(f"Already available counts:\n\t{available_counts}")
+    if not args.overwrite:
+        available_counts = FileFuncs.get_available_count_files(args.out_dir)
+        logger.info(f"Already available counts:\n\t{available_counts}")
+    else:
+        available_counts = set()
 
     to_compute = set()
     if args.data2 != None:  # Cross-correlation
