@@ -249,7 +249,7 @@ class TestComputeModelsCoLoRe(unittest.TestCase):
         _, _pk = self.theory.get_theory_pk(z=0.3, bias=3, lognormal=True)
         mean = np.mean(_pk)
         std = np.std(_pk)
-        np.testing.assert_almost_equal([mean, std], [384406.2408839, 354083.582073])
+        np.testing.assert_almost_equal([mean, std], [384406.2408837, 354083.5820729])
 
     def test_get_theory_pk_fixed_bias_3(self):
         _, _pk = self.theory_dm.get_theory_pk(

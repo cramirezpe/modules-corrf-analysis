@@ -71,6 +71,8 @@ class TestComputeCorrelationsAuto(unittest.TestCase):
         reverse_RSD=False,
         reverse_RSD2=False,
         grid_format="lightcone",
+        overwrite=False,
+        box_size=None,
     )
 
     def setUp(self):
@@ -180,6 +182,8 @@ class TestComputeCorrelationsCross(unittest.TestCase):
         reverse_RSD=False,
         reverse_RSD2=False,
         grid_format="lightcone",
+        overwrite=False,
+        box_size=None,
     )
 
     def setUp(self):
@@ -390,6 +394,8 @@ class TestComputeCorrelationsReadCoLoRe(unittest.TestCase):
         reverse_RSD=False,
         reverse_RSD2=False,
         grid_format="lightcone",
+        overwrite=False,
+        box_size=None,
     )
 
     def setUp(self):
