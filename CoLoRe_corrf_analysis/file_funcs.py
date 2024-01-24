@@ -1,4 +1,6 @@
 from pathlib import Path
+
+from subprocess import run
 from CoLoRe_corrf_analysis.cf_helper import CFComputations
 
 import logging
@@ -67,42 +69,17 @@ class FileFuncs:
             file = path / (option + ".dat")
             
             if file.is_file():
-                if file.stat().st_size < 20:
-                    jobid = int(file.read_text().splitlines()[0])
-                    status = FileFuncs.check_jobid_status(jobid)
-                    if status in (
-                        "COMPLETED",
-                        "RUNNING",
-                        "PENDING",
-                        "REQUEUED",
-                        "SUSPENDED",
-                    ):
-                        available.add(option)
-                else:
+                if file.stat().st_size > 20:
+                    available.add(option)
+            
+            else:
+                file = path / ('0_' + option + ".dat")
+
+                if file.is_file() and file.stat().st_size > 20:
                     available.add(option)
 
         return available
-
-    @staticmethod
-    def check_jobid_status(jobid: int) -> str:
-        tries = 0
-        while tries < 10:
-            sbatch_process = run(
-                f"sacct -j {jobid} -o State --parsable2 -n",
-                shell=True,
-                capture_output=True,
-            )
-
-            try:
-                return sbatch_process.stdout.decode("utf-8").splitlines()[0]
-            except:
-                logger.info(
-                    f"Retrieving status for jobid {jobid} failed. Retrying in 2 seconds..."
-                )
-                time.sleep(2)
-
-        logger.info(f"Retrieving status failed. Assuming job failed.")
-        return "FAILED"       
+   
 
     @staticmethod
     def copy_counts_file(in_path, out_path, in_counts, out_counts=None):
