@@ -47,32 +47,36 @@ class CFComputations:
 
     @property
     def DD(self):
-        try:
-            return np.loadtxt(self.results_path / "DD.dat", dtype=self.dtypes)
-        except OSError:
-            return np.loadtxt(self.results_path / "0_DD.dat", dtype=self.dtypes)
+        return np.loadtxt(self.results_path / "DD.dat", dtype=self.dtypes)
+        # try:
+        #     return np.loadtxt(self.results_path / "DD.dat", dtype=self.dtypes)
+        # except OSError:
+        #     return np.loadtxt(self.results_path / "0_DD.dat", dtype=self.dtypes)
 
     @property
     def DR(self):
-        try:
-            return np.loadtxt(self.results_path / "DR.dat", dtype=self.dtypes)
-        except OSError:
-            return np.loadtxt(self.results_path / "0_DR.dat", dtype=self.dtypes)
+        return np.loadtxt(self.results_path / "DR.dat", dtype=self.dtypes)
+        # try:
+        #     return np.loadtxt(self.results_path / "DR.dat", dtype=self.dtypes)
+        # except OSError:
+        #     return np.loadtxt(self.results_path / "0_DR.dat", dtype=self.dtypes)
 
     @property
     def RR(self):
-        try:
-            return np.loadtxt(self.results_path / "RR.dat", dtype=self.dtypes)
-        except OSError:
-            return np.loadtxt(self.results_path / "0_RR.dat", dtype=self.dtypes)
+        return np.loadtxt(self.results_path / "RR.dat", dtype=self.dtypes)
+        # try:
+        #     return np.loadtxt(self.results_path / "RR.dat", dtype=self.dtypes)
+        # except OSError:
+        #     return np.loadtxt(self.results_path / "0_RR.dat", dtype=self.dtypes)
 
     @property
     def RD(self):
         try:
-            try:
-                return np.loadtxt(self.results_path / "RD.dat", dtype=self.dtypes)
-            except OSError:
-                return np.loadtxt(self.results_path / "0_RD.dat", dtype=self.dtypes)
+            return np.loadtxt(self.results_path / "RD.dat", dtype=self.dtypes)
+            # try:
+            #     return np.loadtxt(self.results_path / "RD.dat", dtype=self.dtypes)
+            # except OSError:
+            #     return np.loadtxt(self.results_path / "0_RD.dat", dtype=self.dtypes)
         except OSError:  # pragma: no cover
             np.savetxt(self.results_path / "RD.dat", self.DR)
             return self.RD
@@ -139,6 +143,28 @@ class CFComputations:
             file = self.results_path / f"npole_{pole}.dat"
             file.unlink(missing_ok=True)
 
+class CFComputationsAbacus:
+    """Simple class to read correlation measurements from Abacus results."""
+    def __init__(self, path= None):
+        self.path = path
+        self.npoles = dict()
+
+        try:
+            r, _0, _2, _4 = np.loadtxt(path, unpack=True)
+            self.npoles[0] = _0 
+            self.npoles[2] = _2
+            self.npoles[4] = _4
+        except ValueError:
+            r, _0 = np.loadtxt(path, unpack=True)
+            self.npoles[0] = _0
+            self.npoles[2] = np.zeros_like(_0)
+            self.npoles[4] = np.zeros_like(_0)
+        
+        self.r = r
+        self.savg = r
+
+    def compute_npole(self, n):
+        return self.npoles[n]
 
 def main():  # pragma: no cover
     import argparse
