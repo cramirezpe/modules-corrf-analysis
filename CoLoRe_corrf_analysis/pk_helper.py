@@ -15,7 +15,9 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
-def cat2delta(cat: np.ndarray, lbox: float, ngrid: int, w_rsd: bool=False) -> np.ndarray:
+def cat2delta(
+    cat: np.ndarray, lbox: float, ngrid: int, w_rsd: bool = False
+) -> np.ndarray:
     # Gets overdensity grid from a catalog
     ix = np.floor((cat["X"] + cat["DX_RSD"] * w_rsd) * ngrid / lbox).astype(int)
     iy = np.floor(cat["Y"] * ngrid / lbox).astype(int)
@@ -76,7 +78,7 @@ class PKComputations:
 
         if self.source < 1 and self.rsd:
             raise ValueError("Can't use RSD for non-tracer density field.")
-        
+
         self.label = label
 
         self.ngrid = self.param_cfg["field_par"]["n_grid"]
@@ -143,7 +145,6 @@ class PKComputations:
         file = self.box_dir / f"pk_data_{name}_{n}.dat"
 
         if file.is_file():
-
             try:
                 npole = np.loadtxt(file)
                 return npole
@@ -207,3 +208,93 @@ class PKComputations:
             logger.info("Unable to save npole to file due to permission error.")
 
         return npole
+
+class PKComputationsAbacus:
+    """Simple class to read Power spectra from Abacus results."""
+    def __init__(self, path: Optional[Path] = None):
+        self.path = path
+        self.npoles = dict()
+
+        try:
+            kcen, kmin, kmax, kavg, nmod, _0, _2, _4 = np.loadtxt(path, unpack=True)
+            self.npoles[0] = _0
+            self.npoles[2] = _2
+            self.npoles[4] = _4
+        except ValueError:
+            kcen, kmin, kmax, kavg, nmod, _0 = np.loadtxt(path, unpack=True)
+            self.npoles[0] = _0
+            self.npoles[2] = np.zeros_like(_0)
+            self.npoles[4] = np.zeros_like(_0)
+
+        self.k = kavg
+
+    def compute_npole(self, n: int):
+        return self.npoles[n]
+    
+
+
+# class PKComputationsCustom(PKComputations):
+#     """Allows to generate sources by giving a CoLoRe box. It also allows to include threshold."""
+
+#     def __init__(
+#         self,
+#         threshold: float = -1,
+#         bias: float = 0,
+#         ndens: float = 0.0005,
+#         bias_model: int = 2,
+#         *args,
+#         **kwargs,
+#     ):
+#         super().__init__(args, **kwargs)
+#         self.threshold = threshold
+#         self.bias = bias
+#         self.ndens = ndens
+#         self.bias_model = bias_model
+
+#     def compute_npole(self, n: int) -> np.ndarray:
+#         """Compute multipoles by reading the grid files. Multipoles will be saved to file in order to speed up analysis (if possible).
+
+#         Args:
+#             n (int): Multipole to return.
+
+#         Returns:
+#             multipole as 1D array of length len(self.k)
+#         """
+#         name = f"threshold_{self.threshold}_bias_{self.bias}_ndens_{self.ndens}_bias_model_{self.bias_model}"
+
+#         file = self.box_dir / f"pk_data_{name}_{n}.dat"
+
+#         if file.is_file():
+#             try:
+#                 npole = np.loadtxt(file)
+#                 return npole
+#             except OSError:
+#                 pass
+
+#         dg = self.read_grid()
+
+
+#         dg[(dg <= -1) | (dg < self.threshold)] = 0
+
+#         if self.bias_model == 2:
+#             msk = dg < 0
+#             dg[msk] = np.exp(dg[msk]*self.bias / (1 + dg[msk]))
+#             dg[~msk] = 1 + dg[~msk]*self.bias
+#         elif self.bias_model == 3:
+#             dg = 1 + self.bias * dg
+#             dg[dg < 0]= 0
+#         else:
+#             dg = (1 + dg)**self.bias
+            
+#         dens_norm = self.ngrid**3 / np.sum(dg)
+
+#         # Add sources by poisson sampling
+#         cell_vol = (self.lbox / self.ngrid) ** 3
+
+#         lambda_ = self.ndens*cell_vol*dg*dens_norm
+
+#         rg = np.random.Generator(np.random.MT19937(seed=42))
+#         nsources = rg.poisson(lambda_)
+
+#         # Computes power spectrum from an overdensity grid
+        
