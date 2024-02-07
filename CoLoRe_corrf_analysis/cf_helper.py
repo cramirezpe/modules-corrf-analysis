@@ -82,6 +82,11 @@ class CFComputations:
             return self.RD
 
     @property
+    def r(self):
+        """Return savg"""
+        return self.savg
+        
+    @property
     def savg(self):
         """Read savg (separations in r for the data"""
         try:
