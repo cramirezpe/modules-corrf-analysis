@@ -93,9 +93,9 @@ class TestComputeCorrelationsAuto(unittest.TestCase):
         DR = np.loadtxt(self.out_dir.parent / "output" / "DR.dat")
         RR = np.loadtxt(self.out_dir.parent / "output" / "RR.dat")
 
-        DD_target = np.loadtxt(self.out_dir.parent / "target_values" / "0_DD.dat")
-        DR_target = np.loadtxt(self.out_dir.parent / "target_values" / "0_DR.dat")
-        RR_target = np.loadtxt(self.out_dir.parent / "target_values" / "0_RR.dat")
+        DD_target = np.loadtxt(self.out_dir.parent / "target_values" / "DD.dat")
+        DR_target = np.loadtxt(self.out_dir.parent / "target_values" / "DR.dat")
+        RR_target = np.loadtxt(self.out_dir.parent / "target_values" / "RR.dat")
 
         np.testing.assert_equal((DD, DR, RR), (DD_target, DR_target, RR_target))
 
@@ -204,9 +204,9 @@ class TestComputeCorrelationsCross(unittest.TestCase):
         DR = np.loadtxt(self.out_dir.parent / "output" / "DR.dat")
         RR = np.loadtxt(self.out_dir.parent / "output" / "RR.dat")
 
-        DD_target = np.loadtxt(self.out_dir.parent / "target_values" / "0_DD.dat")
-        DR_target = np.loadtxt(self.out_dir.parent / "target_values" / "0_DR.dat")
-        RR_target = np.loadtxt(self.out_dir.parent / "target_values" / "0_RR.dat")
+        DD_target = np.loadtxt(self.out_dir.parent / "target_values" / "DD.dat")
+        DR_target = np.loadtxt(self.out_dir.parent / "target_values" / "DR.dat")
+        RR_target = np.loadtxt(self.out_dir.parent / "target_values" / "RR.dat")
 
         np.testing.assert_equal((DD, DR, RR), (DD_target, DR_target, RR_target))
 
@@ -220,13 +220,13 @@ class TestComputeCorrelationsCross(unittest.TestCase):
         RR = np.loadtxt(self.out_dir.parent / "output" / "RR.dat")
 
         DD_target = np.loadtxt(
-            self.out_dir.parent / "target_values_2_randoms" / "0_DD.dat"
+            self.out_dir.parent / "target_values_2_randoms" / "DD.dat"
         )
         DR_target = np.loadtxt(
-            self.out_dir.parent / "target_values_2_randoms" / "0_DR.dat"
+            self.out_dir.parent / "target_values_2_randoms" / "DR.dat"
         )
         RR_target = np.loadtxt(
-            self.out_dir.parent / "target_values_2_randoms" / "0_RR.dat"
+            self.out_dir.parent / "target_values_2_randoms" / "RR.dat"
         )
 
         np.testing.assert_equal((DD, DR, RR), (DD_target, DR_target, RR_target))
@@ -241,9 +241,9 @@ class TestComputeCorrelationsCross(unittest.TestCase):
         DR = np.loadtxt(self.out_dir.parent / "output" / "DR.dat")
         RR = np.loadtxt(self.out_dir.parent / "output" / "RR.dat")
 
-        DD_target = np.loadtxt(self.out_dir.parent / "target_values" / "0_DD.dat")
-        DR_target = np.loadtxt(self.out_dir.parent / "target_values" / "0_DR.dat")
-        RR_target = np.loadtxt(self.out_dir.parent / "target_values" / "0_RR.dat")
+        DD_target = np.loadtxt(self.out_dir.parent / "target_values" / "DD.dat")
+        DR_target = np.loadtxt(self.out_dir.parent / "target_values" / "DR.dat")
+        RR_target = np.loadtxt(self.out_dir.parent / "target_values" / "RR.dat")
 
         np.testing.assert_equal((DD, DR, RR), (DD_target, DR_target, RR_target))
 
@@ -258,13 +258,13 @@ class TestComputeCorrelationsCross(unittest.TestCase):
         RR = np.loadtxt(self.out_dir.parent / "output" / "RR.dat")
 
         DD_target = np.loadtxt(
-            self.out_dir.parent / "target_values_downsampling" / "0_DD.dat"
+            self.out_dir.parent / "target_values_downsampling" / "DD.dat"
         )
         DR_target = np.loadtxt(
-            self.out_dir.parent / "target_values_downsampling" / "0_DR.dat"
+            self.out_dir.parent / "target_values_downsampling" / "DR.dat"
         )
         RR_target = np.loadtxt(
-            self.out_dir.parent / "target_values_downsampling" / "0_RR.dat"
+            self.out_dir.parent / "target_values_downsampling" / "RR.dat"
         )
 
         np.testing.assert_equal((DD, DR, RR), (DD_target, DR_target, RR_target))

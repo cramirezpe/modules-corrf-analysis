@@ -1,0 +1,1 @@
+/global/common/software/desi/users/cramirez/modules_corrf_analysis/CoLoRe_corrf_analysis/tests/test_files/filefunc/s1_s4/nside_2/rsd_norsd/0.1_200_41/0.5_0.7/1000/3/DD.dat

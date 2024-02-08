@@ -94,7 +94,7 @@ class TestCopyConts(unittest.TestCase):
     def tearDown(self):
         shutil.copy(
             self.s1_full / "1000" / "0" / "backupfordidi.dat",
-            self.s1_full / "1000" / "0" / "0_DD.dat",
+            self.s1_full / "1000" / "0" / "DD.dat",
         )
 
         (self.s1_full / "1000" / "1" / "DD.dat").unlink(missing_ok=True)
@@ -115,12 +115,12 @@ class TestCopyConts(unittest.TestCase):
         with self.assertRaises(ValueError) as cm:
             FileFuncs.copy_counts_file(
                 in_path=self.s1_s4_full / "1000" / "0",
-                out_path=self.s1_full / "1000" / "0",
+                out_path=self.s1_full / "1000" / "1000",
                 in_counts="DD",
             )
 
         assert cm.exception.args[0] == "Computed npole in output path. Aborting copy..."
-        assert cm.exception.args[1][:-5] == str(self.s1_full / "1000" / "0" / "npole_")
+        assert cm.exception.args[1][:-5] == str(self.s1_full / "1000" / "1000" / "npole_")
 
     def test_succesful_copy(self):
         FileFuncs.copy_counts_file(
