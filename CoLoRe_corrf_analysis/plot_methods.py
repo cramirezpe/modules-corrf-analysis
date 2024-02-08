@@ -54,7 +54,7 @@ class Plots:
         plot_args (dict, optional): Extra arguments for the plotting (e.g: c='C0'). (Default: dict()).
         """
 
-        fitted_region = (fitter.kmin[pole], fitter.kmax[pole])
+        fitted_region = (fitter.kmin.get(pole, None), fitter.kmax.get(pole, None))
         shown_region = (
             fitter.k[0] if kmin is None else kmin, 
             fitter.k[-1] if kmax is None else kmax,
@@ -184,7 +184,7 @@ class Plots:
         scale_factor=1,
         rsd=True,
         rsd2=None,
-        fitted_region=(0, 301),
+        fitted_region=(None, None),
         shown_region=(0.01, 2),
         reverse_rsd=False,
         reverse_rsd2=False,
@@ -215,8 +215,12 @@ class Plots:
         )
 
         msk = (theory.k < shown_region[1]) & (theory.k > shown_region[0])
-        msk_fitted = msk & (theory.k > fitted_region[0])
-        msk_fitted &= theory.k < fitted_region[1]
+        
+        if fitted_region[0] is None or fitted_region[1] is None:
+            msk_fitted = np.zeros_like(msk, dtype=bool)
+        else:
+            msk_fitted = msk & (theory.k > fitted_region[0])
+            msk_fitted &= theory.k < fitted_region[1]
         
         dashed_plot_args = dict(plot_args)
         dashed_plot_args["label"] = None
