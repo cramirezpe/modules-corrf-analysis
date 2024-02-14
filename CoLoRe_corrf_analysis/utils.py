@@ -16,6 +16,47 @@ if TYPE_CHECKING:
     DTypeVar2 = TypeVar("DTypeVar2", bound=np.dtype)
     DTypeVar3 = TypeVar("DTypeVar3", bound=np.dtype)
 
+def rebin_1d(
+    original_array: np.ndarray[Tuple[T1], DTypeVar], 
+    grid_array: np.ndarray[Tuple[T2], DTypeVar], 
+    data: np.ndarray[Tuple[T1], DTypeVar], 
+    errors: Optional[np.ndarray[Tuple[T1], DTypeVar]]=None,
+) -> Tuple[np.ndarray[Tuple[T1], DTypeVar]]:
+    """Rebin a 1D array.
+
+    Args:
+        original_array (np.ndarray): original array
+        grid_array (np.ndarray): grid array
+        data (np.ndarray): data array
+        error (Optional[np.ndarray], optional): error array. Defaults to None.
+
+    Returns: 
+        Tuple[np.ndarray[Tuple[T1], DTypeVar]]: rebinned data and error if errors provided
+            rebinned data and counts if errors not provided.
+    """
+    bins = find_bins(original_array, grid_array)
+
+    data = np.bincount(
+        bins, 
+        weights=data / errors**2 if errors is not None else data, 
+        minlength=len(grid_array)
+    )
+    ivar = np.bincount(
+        bins, 
+        weights=1 / errors**2 if errors is not None else np.ones_like(original_array), 
+        minlength=len(grid_array)
+    )
+
+    w = ivar > 0 
+    data[w] /= ivar[w]
+
+    if errors is not None:
+        errors = 1 / np.sqrt(ivar)
+        return data, errors
+    else:
+        counts = ivar
+        return data, ivar
+
 
 def weighted_uniform_filter1d(
     data: np.ndarray[Tuple[T1], DTypeVar],
@@ -53,3 +94,16 @@ def weighted_uniform_filter1d(
     data_filtered[w] /= weight_filtered[w]
     
     return data_filtered
+
+def find_bins(
+    original_array: np.ndarray[Tuple[T1], DTypeVar],
+    grid_array: np.ndarray[Tuple[T2], DTypeVar],
+) -> np.ndarray[Tuple[T1], DTypeVar]:
+    """Find correspondent bins of the original array elements in the grid_array positions."""
+    idx = np.searchsorted(grid_array, original_array)
+    np.clip(idx, 0, len(grid_array) - 1, out=idx)
+
+    prev_index_closer = (grid_array[idx - 1] - original_array) ** 2 <= (
+        grid_array[idx] - original_array
+    ) ** 2
+    return idx - prev_index_closer
