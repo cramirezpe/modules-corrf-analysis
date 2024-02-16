@@ -16,7 +16,7 @@ class Plots:
         plot_args (dict, optional): Extra arguments for the plotting (e.g: c='C0'). (Default: dict()).
         """
 
-        fitted_region = (fitter.rmin[pole], fitter.rmax[pole])
+        fitted_region = (fitter.rmin.get(pole, None), fitter.rmax.get(pole, None))
         shown_region = (fitter.r[0], fitter.r[-1])
 
         bias = fitter.out.params["bias"].value
@@ -150,8 +150,12 @@ class Plots:
         )
 
         msk = (theory.r < shown_region[1]) & (theory.r > shown_region[0])
-        msk_fitted = msk & (theory.r > fitted_region[0])
-        msk_fitted &= theory.r < fitted_region[1]
+
+        if fitted_region[0] is None or fitted_region[1] is None:
+            msk_fitted = np.zeros_like(msk, dtype=bool)
+        else:
+            msk_fitted = msk & (theory.r > fitted_region[0])
+            msk_fitted &= theory.r < fitted_region[1]
 
         dashed_plot_args = dict(plot_args)
         dashed_plot_args["label"] = None

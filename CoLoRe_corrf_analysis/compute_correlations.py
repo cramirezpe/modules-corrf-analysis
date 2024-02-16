@@ -694,8 +694,8 @@ def main(args=None):
     if (args.randoms2 != None) and (args.data2 == None):  # pragma: no cover
         raise ValueError("If two randoms are provided, two datasets are required.")
 
-    if args.grid_format == "snapshot" and args.data_format not in ("CoLoRe", "cartcat"):
-        raise ValueError("Snapshot grid format only available for CoLoRe data format.")
+    # if args.grid_format == "snapshot" and args.data_format not in ("CoLoRe", "cartcat"):
+    #     raise ValueError("Snapshot grid format only available for CoLoRe data format.")
 
     if args.grid_format == "lightcone":
         z = np.arange(args.zmin_covd, args.zmax_covd, args.zstep_covd)
