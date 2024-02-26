@@ -172,7 +172,7 @@ class FitterBase:
                     self.model(_pole, params)[self.masks[_pole]],
                 )
 
-                return (_data - _model) / _err
+            return (_data - _model) / _err
 
         return residual
 
