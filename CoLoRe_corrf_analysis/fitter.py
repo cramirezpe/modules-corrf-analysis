@@ -103,9 +103,9 @@ class FitterBase:
         """
         if self.data_dict is None:
             self.data_dict = dict()
-            for pole in self.poles:
-                self.data_dict[pole] = np.array(
-                    [box.compute_npole(pole) for box in self.boxes]
+            for _pole in self.poles:
+                self.data_dict[_pole] = np.array(
+                    [box.compute_npole(_pole) for box in self.boxes]
                 ).mean(axis=0)
 
         return self.data_dict[pole]
@@ -118,12 +118,12 @@ class FitterBase:
         """
         if self.err_dict is None:
             self.err_dict = dict()
-            for pole in self.poles:
+            for _pole in self.poles:
                 if len(self.boxes) == 1:
-                    self.err_dict[pole] = np.ones_like(self.data(pole))
+                    self.err_dict[_pole] = np.ones_like(self.data(_pole))
                 else:
-                    self.err_dict[pole] = np.array(
-                        [box.compute_npole(pole) for box in self.boxes]
+                    self.err_dict[_pole] = np.array(
+                        [box.compute_npole(_pole) for box in self.boxes]
                     ).std(axis=0, ddof=1) / len(
                         self.boxes
                     )
