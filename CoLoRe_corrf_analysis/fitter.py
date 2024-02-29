@@ -22,11 +22,6 @@ class FitterBase:
         theory,
         rsd,
         rsd2=None,
-        bias0=None,
-        bias20=None,
-        smooth_factor0=None,
-        smooth_factor_rsd0=None,
-        smooth_factor_cross0=None,
         rmin=None,
         rmax=None,
         reverse_rsd=False,
@@ -38,14 +33,9 @@ class FitterBase:
             boxes (1D array of cf_helper.CFComputations objects): Boxes with the data information.
             z (float): Redshift to use for the model.
             poles (array of int): Multipoles to use for the fitter.
-            theory (read_theory_to_xi.ComputeModelsCoLoRe object, optional): Theory object used for the theoretical model.
+            theory (read_theory_to_xi.ComputeModelsCoLoRe object, optional): self.theory object used for the theoretical model.
             rsd (bool): Whether to use RSD or not.
             rsd2 (bool): For cross-correlations, use RSD for second field. (Default: None -> auto-correlation)
-            bias0 (float, optional): Initial value for bias. (Default: Read it from input bias).
-            bias20 (float, optional): For cross-correlations, initial value for bias of field2. (Default: None -> auto-correlation)
-            smooth_factor0 (float, optional): Initial value for smooth_factor. (Default: Use the one from ComputeModelsCoLoRe.__init__).
-            smooth_factor_rsd0 (float, optional): Initial value for smooth_factor_rsd. (Default: Use the one from ComputeModelsCoLoRe.__init__).
-            smooth_factor_cross0 (float, optional): Initial value for smooth_factor_cross. (Default: Use the one from ComputeModelsCoLoRe.__init__).
             rmin (dict, optional): Min r for the fits. (Default: {0:10, 2:40}, 10 for the monopole, 40 for the quadrupole).
             rmax (dict, optional): Max r for the fits. (Default: {0:200, 2:200}, 200 both for monopole and quadrupole).
             reverse_rsd (bool, optional): Reverse redshift (rsd terms will be negative). (Default: False)
@@ -67,30 +57,6 @@ class FitterBase:
             self.cross = False
 
         self.theory = theory
-
-        if bias0 is None:  # pragma: no cover
-            self.bias0 = theory.bias(z)
-        else:
-            self.bias0 = bias0
-
-        self.bias20 = bias20
-        if (self.bias20 is None) and (self.cross):  # pragma: no cover
-            self.bias20 = self.bias0
-
-        if smooth_factor0 is None:  # pragma: no cover
-            self.smooth_factor0 = theory.smooth_factor
-        else:
-            self.smooth_factor0 = smooth_factor0
-
-        if smooth_factor_rsd0 is None:  # pragma: no cover
-            self.smooth_factor_rsd0 = theory.smooth_factor_rsd
-        else:
-            self.smooth_factor_rsd0 = smooth_factor_rsd0
-
-        if smooth_factor_cross0 is None:  # pragma: no cover
-            self.smooth_factor_cross0 = theory.smooth_factor_cross
-        else:
-            self.smooth_factor_cross0 = smooth_factor_cross0
 
         self.data_dict = None
         self.err_dict = None
@@ -176,72 +142,68 @@ class FitterBase:
 
         return residual
 
-    def run_fit(self, free_params):
+    @property
+    def default_parameters(self):
+        return {
+            "z": {
+                "value": self.z0,
+                "min": 0,
+                "vary": False,
+            },
+            "smooth_factor": {
+                "value": self.theory.smooth_factor,
+                "min": 0,
+                "vary": False,
+            },
+            "smooth_factor_rsd": {
+                "value": self.theory.smooth_factor_rsd,
+                "min": 0,
+                "vary": False,
+            },
+            "smooth_factor_cross": {
+                "value": self.theory.smooth_factor_cross,
+                "min": 0,
+                "vary": False,
+            },
+            "bias": {
+                "value": self.theory.bias(self.z0),
+                "min": 0,
+                "vary": False,
+            },
+            "bias2": {
+                "value": None if self.cross else self.theory.bias(self.z0),
+                "min": 0,
+                "max": 40,
+                "vary": False,
+            },
+            "scale_factor": {
+                "value": 1,
+                "min": 0,
+                "vary": False,
+            }
+        }
+
+    def run_fit(self, **params):
         """
         Run the fit with a certain number of free parameters. Initial guess given during the initialization of the class.
 
         Args:
-            free_params (list of str): List with the fields to set free (bias, bias2, smooth_factor and smooth_factor_rsd are the options).
+            **params (Dict): Parameters to send to the fit. The format is a dict where each 
+            key corresponds to a kwarg to be sent to lmfit.Parameter init. See method .default_parameters
+            for reference.
 
         Returns:
             lmfit minimize output. Which is also stored in self.out.
         """
-        assert isinstance(
-            free_params, list
-        )  # I need a certain order in the free_params list for this method to work
-
-        defaults = dict(
-            z=self.z0,
-            bias=self.bias0,
-            bias2=self.bias20,
-            smooth_factor=self.smooth_factor0,
-            smooth_factor_rsd=self.smooth_factor_rsd0,
-            smooth_factor_cross=self.smooth_factor_cross0,
-            scale_factor=1,
-        )
-
-        for i in free_params:
-            assert i in (
-                "bias",
-                "smooth_factor",
-                "smooth_factor_rsd",
-                "smooth_factor_cross",
-                "bias2",
-                "scale_factor",
-                "z",
-            )
-
         params = Parameters()
-        params.add("z", value=defaults["z"], min=0, vary="z" in free_params)
-        params.add("bias", value=defaults["bias"], min=0, max=40, vary="bias" in free_params)
-        params.add(
-            "smooth_factor",
-            value=defaults["smooth_factor"],
-            min=0,
-            vary="smooth_factor" in free_params,
-        )
-        params.add(
-            "smooth_factor_rsd",
-            value=defaults["smooth_factor_rsd"],
-            min=0,
-            vary="smooth_factor_rsd" in free_params,
-        )
-        params.add(
-            "smooth_factor_cross",
-            value=defaults["smooth_factor_cross"],
-            min=0,
-            vary="smooth_factor_cross" in free_params,
-        )
-        params.add(
-            "scale_factor",
-            value=defaults["scale_factor"],
-            min=0,
-            vary="scale_factor" in free_params,
-        )
-        if self.cross:
-            params.add(
-                "bias2", value=defaults["bias2"], min=0, max=40, vary="bias2" in free_params
-            )
+
+        for key, defaults in self.default_parameters.items():
+            if key == "bias2" and not self.cross:
+                continue
+            
+            values = {**defaults, **params.get(key, dict())}
+            values["name"] = key
+            params.add(**values)
 
         residual = self.get_residual()
 
