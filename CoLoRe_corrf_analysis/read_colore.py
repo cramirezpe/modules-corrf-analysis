@@ -584,7 +584,7 @@ class ComputeModelsCoLoRe(ReadCoLoRe):
         return self.input_pk[0]
 
     def get_theory_pk(
-        self, z, bias=None, bias2=None, lognormal=False, smooth_factor=None, tracer="dd"
+        self, z, bias=None, bias2=None, lognormal=False, smooth_factor=None, damping_factor=None, tracer="dd"
     ):
         """Get theoretical power spectrum by smoothing, evolving, biasing and lognormalizing the input power spectrum.
 
@@ -594,6 +594,7 @@ class ComputeModelsCoLoRe(ReadCoLoRe):
             bias2 (float, optional): When cross-correlating fields, bias for the second field. (Default: same as bias -> auto-correlation).
             lognormal (bool, optional): Whether to apply lognormal transformation. (Default: False).
             smooth_factor (float, optional): Smoothing prefactor to apply for the power spectrum. (Default: using dd smoothing factor.)
+            damping_factor (float, optional): Damping factor to emulate nonlinear.
             tracer (str, optional): Tracer to compute the power spectrum. Options:
                 dd (DEFAULT): galaxy-galaxy like. It will bias the power spectrum twice (bias*bias2)
                 dm: galaxy-matter like. It will bias the power spectrum once (bias)
@@ -623,6 +624,9 @@ class ComputeModelsCoLoRe(ReadCoLoRe):
 
         pk *= np.exp(-smoothing * k ** 2)
 
+        if damping_factor is not None:
+            pk *= np.exp(-damping_factor * k)
+
         if tracer == "dd":
             bias_factor = bias * bias2
         elif tracer == "dm":
@@ -646,7 +650,7 @@ class ComputeModelsCoLoRe(ReadCoLoRe):
         return k, evolved_pk
 
     def get_theory(
-        self, z, bias=None, bias2=None, lognormal=False, smooth_factor=None, tracer="dd"
+        self, z, bias=None, bias2=None, lognormal=False, smooth_factor=None, damping_factor=None, tracer="dd"
     ):  # pragma: no cover
         """Get theoretical correlation function by smoothing, evolving, biasing and lognormalizing the input power spectrum.
 
@@ -656,6 +660,7 @@ class ComputeModelsCoLoRe(ReadCoLoRe):
             bias2 (float, optional): When cross-correlating fields, bias for the second field. (Default: same as bias -> auto-correlation).
             lognormal (bool, optional): Whether to apply lognormal transformation. (Default: False).
             smooth_factor (float, optional): Smoothing prefactor to apply for the power spectrum. (Default: using dd smoothing factor.)
+            damping_factor (float, optional): Damping factor to emulate nonlinear.
             tracer (str, optional): Tracer to compute the power spectrum. Options:
                 dd (DEFAULT): galaxy-galaxy like. It will bias the power spectrum twice (bias*bias2)
                 dm: galaxy-matter like. It will bias the power spectrum once (bias)
@@ -670,6 +675,7 @@ class ComputeModelsCoLoRe(ReadCoLoRe):
             bias2=bias2,
             lognormal=lognormal,
             smooth_factor=smooth_factor,
+            damping_factor=damping_factor,
             tracer=tracer,
         )
 
@@ -688,6 +694,7 @@ class ComputeModelsCoLoRe(ReadCoLoRe):
         smooth_factor=None,
         smooth_factor_rsd=None,
         smooth_factor_cross=None,
+        damping_factor=None,
         reverse_rsd=False,
         reverse_rsd2=False,
     ):
@@ -703,6 +710,7 @@ class ComputeModelsCoLoRe(ReadCoLoRe):
             smooth_factor (float, optional): Smoothing prefactor for the lognormalized field dd (<delta_LN delta_LN>), as the 1.1 in "double rsm2_gg=par->r2_smooth+1.1*pow(par->l_box/par->n_grid,2)/12.". (Default: Value used in __init__ method).
             smooth_factor_rsd (float, optional): Smoothing prefactor for the matter matter field. <delta_L delta_L>. (Default: Value used in __init__ method).
             smooth_factor_cross (float, optional): Smoothing prefactor for the matter galaxy (dm) field. <delta_LN delta_L>. (Default: Value used in __init__ method).
+            damping_factor (float, optional): Damping factor to emulate nonlinear.
             reverse_rsd (bool, optional): Reverse redshift (rsd terms will be negative). (Default: False)
             reverse_rsd2 (bool, optional): Reverse redshift for second field in cross-correlations (rsd terms negative). (Default: False)
 
@@ -744,11 +752,12 @@ class ComputeModelsCoLoRe(ReadCoLoRe):
                 bias2=bias2,
                 lognormal=True,
                 smooth_factor=smooth_factor,
+                damping_factor=damping_factor,
                 tracer="dd",
             )[1]
         else:
             pk_l = self.get_theory_pk(
-                z, bias=bias, bias2=bias2, smooth_factor=smooth_factor, tracer="dd"
+                z, bias=bias, bias2=bias2, smooth_factor=smooth_factor, damping_factor=damping_factor, tracer="dd"
             )[1]
 
         if not rsd and not rsd2:
@@ -770,13 +779,13 @@ class ComputeModelsCoLoRe(ReadCoLoRe):
             f = self.logarithmic_growth_rate(z, read_file=False)
 
         pk_rsd = self.get_theory_pk(
-            z, bias=None, smooth_factor=smooth_factor_rsd, tracer="mm"
+            z, bias=None, smooth_factor=smooth_factor_rsd, damping_factor=damping_factor, tracer="mm"
         )[1]
         pk_cross_bias1 = self.get_theory_pk(
-            z, bias=bias, smooth_factor=smooth_factor_cross, tracer="dm"
+            z, bias=bias, smooth_factor=smooth_factor_cross, damping_factor=damping_factor, tracer="dm"
         )[1]
         pk_cross_bias2 = self.get_theory_pk(
-            z, bias=bias2, smooth_factor=smooth_factor_cross, tracer="dm"
+            z, bias=bias2, smooth_factor=smooth_factor_cross, damping_factor=damping_factor, tracer="dm"
         )[1]
 
         if reverse_rsd and rsd:
@@ -811,6 +820,7 @@ class ComputeModelsCoLoRe(ReadCoLoRe):
         smooth_factor=None,
         smooth_factor_rsd=None,
         smooth_factor_cross=None,
+        damping_factor=None,
         reverse_rsd=False,
         reverse_rsd2=False,
     ):
@@ -826,6 +836,7 @@ class ComputeModelsCoLoRe(ReadCoLoRe):
             smooth_factor (float, optional): Smoothing prefactor for the lognormalized field dd (<delta_LN delta_LN>), as the 1.1 in "double rsm2_gg=par->r2_smooth+1.1*pow(par->l_box/par->n_grid,2)/12.". (Default: Value used in __init__ method).
             smooth_factor_rsd (float, optional): Smoothing prefactor for the matter matter field. <delta_L delta_L>. (Default: Value used in __init__ method).
             smooth_factor_cross (float, optional): Smoothing prefactor for the matter galaxy (dm) field. <delta_LN delta_L>. (Default: Value used in __init__ method).
+            damping_factor (float, optional): Damping factor to emulate nonlinear.
             reverse_rsd (bool, optional): Reverse redshift (rsd terms will be negative). (Default: False)
             reverse_rsd2 (bool, optional): Reverse redshift for second field in cross-correlations (rsd terms negative). (Default: False)
 
@@ -844,6 +855,7 @@ class ComputeModelsCoLoRe(ReadCoLoRe):
             smooth_factor=smooth_factor,
             smooth_factor_rsd=smooth_factor_rsd,
             smooth_factor_cross=smooth_factor_cross,
+            damping_factor=damping_factor,
             reverse_rsd=reverse_rsd,
             reverse_rsd2=reverse_rsd2,
         )
