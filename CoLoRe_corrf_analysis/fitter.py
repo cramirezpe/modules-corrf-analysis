@@ -180,15 +180,15 @@ class FitterBase:
                 "value": 1,
                 "min": 0,
                 "vary": False,
-            }
+            },
         }
 
-    def run_fit(self, **params):
+    def run_fit(self, **fit_params):
         """
         Run the fit with a certain number of free parameters. Initial guess given during the initialization of the class.
 
         Args:
-            **params (Dict): Parameters to send to the fit. The format is a dict where each 
+            **fit_params (Dict): Parameters to send to the fit. The format is a dict where each 
             key corresponds to a kwarg to be sent to lmfit.Parameter init. See method .default_parameters
             for reference.
 
@@ -201,9 +201,14 @@ class FitterBase:
             if key == "bias2" and not self.cross:
                 continue
             
-            values = {**defaults, **params.get(key, dict())}
+            values = {**defaults, **fit_params.get(key, dict())}
             values["name"] = key
             params.add(**values)
+
+        for key, values in fit_params.items():
+            if key not in self.default_parameters.keys():
+                values["name"] = key
+                params.add(**values)
 
         residual = self.get_residual()
 
