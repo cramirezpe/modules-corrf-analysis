@@ -451,7 +451,9 @@ class FieldData:
 
         z_gen = interp1d(p, z_sort)
 
-        NRAND = int(len(self.data) * factor)
+        NRAND = int(len(data.data)*factor)
+        self.define_data_from_size(NRAND)
+
         logger.info("Interpolating redshift")
         ran1 = np.random.random(NRAND)
         self.data["Z"] = z_gen(ran1)
@@ -813,7 +815,6 @@ def main(args=None):
                         nside=args.nside,
                     )
                 else:
-                    rand.define_data_from_size(len(data.data))
                     rand.generate_random_redshifts_from_data(
                         data, factor=args.randoms_factor
                     )
@@ -868,7 +869,6 @@ def main(args=None):
                         nside=args.nside,
                     )
                 else:
-                    rand2.define_data_from_size(len(data2.data))
                     rand2.generate_random_redshifts_from_data(
                         data2, factor=args.randoms_factor
                     )
