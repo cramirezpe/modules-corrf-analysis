@@ -44,10 +44,10 @@ class TestAuto(unittest.TestCase):
             poles=[0, 2],
             theory=self.theory,
             rsd=True,
-            bias0=3,
-            smooth_factor0=1,
-            smooth_factor_rsd0=1,
-            smooth_factor_cross0=1,
+            # bias0=3,
+            # smooth_factor0=1,
+            # smooth_factor_rsd0=1,
+            # smooth_factor_cross0=1,
             rmin={0: 10, 2: 40},
             rmax={0: 200, 2: 200},
         )
@@ -58,7 +58,12 @@ class TestAuto(unittest.TestCase):
                 os.remove(_npole_file.resolve())
 
     def test_fitter(self):
-        self.fitter.run_fit(free_params=["bias", "smooth_factor"])
+        self.fitter.run_fit(
+            bias=dict(vary=True, value=3),
+            smooth_factor=dict(vary=True, value=1),
+            smooth_factor_rsd=dict(vary=False, value=1),
+            smooth_factor_cross=dict(vary=False, value=1),
+        )
         params = self.fitter.out.params
 
         values = [
@@ -120,7 +125,13 @@ class TestCross(unittest.TestCase):
                 os.remove(_npole_file.resolve())
 
     def test_fitter(self):
-        self.fitter.run_fit(free_params=["bias", "bias2"])
+        self.fitter.run_fit(
+            bias=dict(vary=True, value=3),
+            bias2=dict(vary=True),
+            smooth_factor=dict(vary=False, value=1),
+            smooth_factor_rsd=dict(vary=False, value=1),
+            smooth_factor_cross=dict(vary=False, value=1),
+        )
         params = self.fitter.out.params
 
         values = [
