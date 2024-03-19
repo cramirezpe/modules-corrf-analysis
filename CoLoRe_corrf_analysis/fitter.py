@@ -183,11 +183,13 @@ class FitterBase:
             },
         }
 
-    def run_fit(self, **fit_params):
+    def run_fit(self, nan_policy: str="raise", **fit_params):
         """
         Run the fit with a certain number of free parameters. Initial guess given during the initialization of the class.
 
         Args:
+            nan_policy: Policy to handle nans (use omit to ignore them). See
+                https://lmfit.github.io/lmfit-py/faq.html#i-get-errors-from-nan-in-my-fit-what-can-i-do
             **fit_params (Dict): Parameters to send to the fit. The format is a dict where each 
             key corresponds to a kwarg to be sent to lmfit.Parameter init. See method .default_parameters
             for reference.
@@ -212,7 +214,7 @@ class FitterBase:
 
         residual = self.get_residual()
 
-        self.out = lmfitminimize(residual, params)
+        self.out = lmfitminimize(residual, params, nan_policy=nan_policy)
         return self.out
 
     def pars_tab(self):  # pragma: no cover
