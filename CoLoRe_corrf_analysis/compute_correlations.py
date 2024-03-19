@@ -451,9 +451,7 @@ class FieldData:
 
         z_gen = interp1d(p, z_sort)
 
-        NRAND = int(len(data.data)*factor)
-        self.define_data_from_size(NRAND)
-
+        NRAND = int(len(self.data) * factor)
         logger.info("Interpolating redshift")
         ran1 = np.random.random(NRAND)
         self.data["Z"] = z_gen(ran1)
@@ -696,8 +694,8 @@ def main(args=None):
     if (args.randoms2 != None) and (args.data2 == None):  # pragma: no cover
         raise ValueError("If two randoms are provided, two datasets are required.")
 
-    # if args.grid_format == "snapshot" and args.data_format not in ("CoLoRe", "cartcat"):
-    #     raise ValueError("Snapshot grid format only available for CoLoRe data format.")
+    if args.grid_format == "snapshot" and args.data_format not in ("CoLoRe", "cartcat"):
+        raise ValueError("Snapshot grid format only available for CoLoRe data format.")
 
     if args.grid_format == "lightcone":
         z = np.arange(args.zmin_covd, args.zmax_covd, args.zstep_covd)
@@ -815,6 +813,7 @@ def main(args=None):
                         nside=args.nside,
                     )
                 else:
+                    rand.define_data_from_size(len(data.data))
                     rand.generate_random_redshifts_from_data(
                         data, factor=args.randoms_factor
                     )
@@ -869,6 +868,7 @@ def main(args=None):
                         nside=args.nside,
                     )
                 else:
+                    rand2.define_data_from_size(len(data2.data))
                     rand2.generate_random_redshifts_from_data(
                         data2, factor=args.randoms_factor
                     )
