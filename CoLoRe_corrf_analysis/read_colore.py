@@ -182,7 +182,7 @@ class ReadCoLoRe:
         )
         return 2 * r_max.value * (1 + 2 / self.param_cfg["field_par"]["n_grid"])
 
-    def get_nz_histogram_from_Nz_file(self, bins):
+    def get_nz_histogram_from_Nz_file(self, bins, zmin=None, zmax=None):
         """Get nz histogram from input Nz file
 
         Args:
@@ -191,14 +191,19 @@ class ReadCoLoRe:
         Returns:
             1D array of counts for the histogram.
         """
+        if zmin is None:
+            zmin = self.zmin
+        if zmax is None:
+            zmax = self.zmax
+
         z, nz = np.loadtxt(self.nz_filename, unpack=True)
         nz_interpolation = interp1d(z, nz)
 
         bins_centers = 0.5 * (bins[1:] + bins[:-1])
         new_nz = nz_interpolation(bins_centers)
 
-        new_nz[bins_centers < self.zmin] = 0
-        new_nz[bins_centers > self.zmax] = 0
+        new_nz[bins_centers < zmin] = 0
+        new_nz[bins_centers > zmax] = 0
 
         db = np.array(np.diff(bins), float)
         return new_nz / (new_nz * db).sum()
@@ -282,7 +287,7 @@ class ReadCoLoRe:
             else:
                 Nz = self.get_nz_histogram_from_master_file(master_file, bins, rsd)
         elif method == "Nz_file":
-            Nz = self.get_nz_histogram_from_Nz_file(bins)
+            Nz = self.get_nz_histogram_from_Nz_file(bins, zmin, zmax)
         else:  # pragma: no cover
             raise ValueError(
                 'Method for combining Nz should be in ("CoLoRe", "master_file", "Nz_file")'
