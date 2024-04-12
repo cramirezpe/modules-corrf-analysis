@@ -87,6 +87,8 @@ class PKComputations:
     def read_grid(self) -> np.ndarray:
         if self.source == 0:
             prefix = "out_dens_gaussian"
+        elif self.source == -2:
+            prefix = "out_eta"
         else:
             prefix = "out_dens_nonlinear"
 
@@ -137,6 +139,8 @@ class PKComputations:
             name = "gaussian"
         elif self.source == -1:
             name = "nonlinear"
+        elif self.source == -2:
+            name = "eta"
         else:
             name = f"src{self.source}"
             if self.rsd:
