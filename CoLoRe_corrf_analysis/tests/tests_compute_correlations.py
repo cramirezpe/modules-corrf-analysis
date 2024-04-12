@@ -280,8 +280,7 @@ class TestComputeRandoms(unittest.TestCase):
         data.prepare_data(zmin=0, zmax=10, downsampling=1, pixel_mask=None, nside=2)
 
         rand = compute_correlations.FieldData(cat=None, label=None, file_type=None)
-        rand.define_data_from_size(1000)
-        rand.generate_random_redshifts_from_data(data)
+        rand.generate_random_redshifts_from_data(data, factor=0.1)
 
         target = np.loadtxt(
             Path(__file__).parent
