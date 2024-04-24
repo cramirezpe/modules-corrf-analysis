@@ -28,6 +28,7 @@ class ReadCoLoRe:
         source,
         bias_filename=None,
         nz_filename=None,
+        threshold_filename=None,
         param_cfg_filename=None,
         zmin=None,
         zmax=None,
@@ -40,6 +41,7 @@ class ReadCoLoRe:
             source (int): Soruce to read from CoLoRe output.
             bias_filename (str or Path, optional): bias filename for computations with bias. (Default: Searches for bias_filename in param_cfg).
             nz_filename (str or Path, optional): Nz filename. (Default: Searches for nz_filename in the param_cfg).
+            threshold_filename (str or Path, optional): Threshold filename. (Default: Searches for threshold_filename in the param_cfg).
             param_cfg_filename (str or Path, optional): Path to param_cfg file. Used to search for nz_filename and bias_filename if they are not fixed. (Default: globbing .cfg in the box path).
             zmin (float, optional): zmin to consider when dealing with nz distribution. Defaults to zmin in paramcfg if it exists, 0 if not.
             zmax (float, optional): zmax to consider when dealing with nz distribution. Defaults to zmax in paramcfg if it exists, 1000 if not.
@@ -68,6 +70,16 @@ class ReadCoLoRe:
                 print("Failed reading nz from param.cfg")
         else:
             self.nz_filename = nz_filename
+
+        if threshold_filename is None:  # pragma: no cover
+            try:
+                self.threshold_filename = self.param_cfg[f"srcs{self.source}"].get(
+                    "threshold_filename", None
+                )
+            except Exception:
+                print("Failed reading threshold from param.cfg")
+        else:
+            self.threshold_filename = threshold_filename
 
         if zmin is None:  # pragma: no cover
             if self.param_cfg is None:
@@ -293,8 +305,8 @@ class ReadCoLoRe:
                 'Method for combining Nz should be in ("CoLoRe", "master_file", "Nz_file")'
             )
 
-        norm_Nz2 = 1 / (bin_width * (Nz ** 2).sum())
-        Nz2 = norm_Nz2 * Nz ** 2
+        norm_Nz2 = 1 / (bin_width * (Nz**2).sum())
+        Nz2 = norm_Nz2 * Nz**2
 
         zs = np.array([zi * Nzi for zi, Nzi in zip(bin_centers, Nz2)])
 
@@ -324,11 +336,29 @@ class ReadCoLoRe:
             Interp1d object for bias.
         """
         if self.snapshot:
-            bias = self.param_cfg[f'srcs{self.source}']['bias']
+            bias = self.param_cfg[f"srcs{self.source}"]["bias"]
             return interp1d([0, 10], [bias, bias], fill_value="extrapolate")
         else:
             bias_z, bias_bz = np.loadtxt(self.bias_filename, unpack=True)
             return interp1d(bias_z, bias_bz, fill_value="extrapolate")
+
+    @cached_property
+    def threshold(self):
+        """Get threshold interpolation object from the input threshold file.
+
+        Returns:
+            Interp1d object for threshold.
+        """
+        if self.snapshot:
+            threshold = self.param_cfg[f"srcs{self.source}"].get("threshold", -1)
+            return interp1d([0, 10], [threshold, threshold], fill_value="extrapolate")
+        else:
+            if self.threshold_filename is not None:
+                threshold_z, threshold_tz = np.loadtxt(self.threshold_filename, unpack=True)
+            else:
+                z, _ = np.loadtxt(self.bias_filename, unpack=True)
+                threshold_tz = - np.ones_like(z)
+            return interp1d(threshold_z, threshold_tz, fill_value="extrapolate")
 
     def get_a_eq(self):  # pragma: no cover
         """Computes and returns a_eq as computed in CoLoRe code:
@@ -364,7 +394,7 @@ class ReadCoLoRe:
         a_eq = self.get_a_eq()
 
         alim = 0.01 * a_eq
-        int0 = 0.4 * np.sqrt(alim ** 5 / (self.cosmo["omega_M"] ** 3))
+        int0 = 0.4 * np.sqrt(alim**5 / (self.cosmo["omega_M"] ** 3))
         if a <= alim:
             return a
         else:
@@ -377,7 +407,7 @@ class ReadCoLoRe:
                     a
                     / (
                         self.cosmo["omega_M"]
-                        + self.cosmo["omega_L"] * a ** 3
+                        + self.cosmo["omega_L"] * a**3
                         + self.cosmo["omega_K"] * a
                     )
                 )
@@ -421,7 +451,7 @@ class ReadCoLoRe:
 
             if self.cosmo["normalDE"] == 1:
                 coeff = 0
-                apow = a ** 3
+                apow = a**3
             else:  # pragma: no cover
                 coeff = 1 + self.cosmo["w"]
                 apow = a ** (-3 * self.cosmo["w"])
@@ -467,6 +497,7 @@ class ComputeModelsCoLoRe(ReadCoLoRe):
         source,
         bias_filename=None,
         nz_filename=None,
+        threshold_filename=None,
         pk_filename=None,
         param_cfg_filename=None,
         zmin=None,
@@ -483,6 +514,7 @@ class ComputeModelsCoLoRe(ReadCoLoRe):
             box_path=box_path,
             source=source,
             bias_filename=bias_filename,
+            threshold_filename=threshold_filename,
             nz_filename=nz_filename,
             param_cfg_filename=param_cfg_filename,
             zmin=zmin,
@@ -496,6 +528,7 @@ class ComputeModelsCoLoRe(ReadCoLoRe):
             source (int): Soruce to read from CoLoRe output.
             bias_filename (str or Path, optional): bias filename for computations with bias. (Default: Searches for bias_filename in param_cfg).
             nz_filename (str or Path, optional): Nz filename. (Default: Searches for nz_filename in the param_cfg).
+            threshold_filename (str or Path, optional): Threshold filename. (Default: Searches for threshold_filename in the param_cfg).
             param_cfg_filename (str or Path, optional): Path to param_cfg file. Used to search for nz_filename and bias_filename if they are not fixed. (Default: globbing .cfg in the box path).
             zmin (float, optional): zmin to consider when dealing with nz distribution. Defaults to zmin in paramcfg if it exists, 0 if not.
             zmax (float, optional): zmax to consider when dealing with nz distribution. Defaults to zmax in paramcfg if it exists, 1000 if not.
@@ -589,7 +622,14 @@ class ComputeModelsCoLoRe(ReadCoLoRe):
         return self.input_pk[0]
 
     def get_theory_pk(
-        self, z, bias=None, bias2=None, lognormal=False, smooth_factor=None, damping_factor=None, tracer="dd"
+        self,
+        z,
+        bias=None,
+        bias2=None,
+        lognormal=False,
+        smooth_factor=None,
+        damping_factor=None,
+        tracer="dd",
     ):
         """Get theoretical power spectrum by smoothing, evolving, biasing and lognormalizing the input power spectrum.
 
@@ -622,12 +662,12 @@ class ComputeModelsCoLoRe(ReadCoLoRe):
             raise ValueError("Mixed biases only valid whith dd tracer")
 
         smoothing = (
-            self.r_smooth ** 2
+            self.r_smooth**2
             + smooth_factor * (self.L_box() / self.n_grid) ** 2 / 12
             + self.analysis_smoothing
         )
 
-        pk *= np.exp(-smoothing * k ** 2)
+        pk *= np.exp(-smoothing * k**2)
 
         if damping_factor is not None:
             pk *= np.exp(-damping_factor * k)
@@ -655,7 +695,14 @@ class ComputeModelsCoLoRe(ReadCoLoRe):
         return k, evolved_pk
 
     def get_theory(
-        self, z, bias=None, bias2=None, lognormal=False, smooth_factor=None, damping_factor=None, tracer="dd"
+        self,
+        z,
+        bias=None,
+        bias2=None,
+        lognormal=False,
+        smooth_factor=None,
+        damping_factor=None,
+        tracer="dd",
     ):  # pragma: no cover
         """Get theoretical correlation function by smoothing, evolving, biasing and lognormalizing the input power spectrum.
 
@@ -762,7 +809,12 @@ class ComputeModelsCoLoRe(ReadCoLoRe):
             )[1]
         else:
             pk_l = self.get_theory_pk(
-                z, bias=bias, bias2=bias2, smooth_factor=smooth_factor, damping_factor=damping_factor, tracer="dd"
+                z,
+                bias=bias,
+                bias2=bias2,
+                smooth_factor=smooth_factor,
+                damping_factor=damping_factor,
+                tracer="dd",
             )[1]
 
         if not rsd and not rsd2:
@@ -784,13 +836,25 @@ class ComputeModelsCoLoRe(ReadCoLoRe):
             f = self.logarithmic_growth_rate(z, read_file=False)
 
         pk_rsd = self.get_theory_pk(
-            z, bias=None, smooth_factor=smooth_factor_rsd, damping_factor=damping_factor, tracer="mm"
+            z,
+            bias=None,
+            smooth_factor=smooth_factor_rsd,
+            damping_factor=damping_factor,
+            tracer="mm",
         )[1]
         pk_cross_bias1 = self.get_theory_pk(
-            z, bias=bias, smooth_factor=smooth_factor_cross, damping_factor=damping_factor, tracer="dm"
+            z,
+            bias=bias,
+            smooth_factor=smooth_factor_cross,
+            damping_factor=damping_factor,
+            tracer="dm",
         )[1]
         pk_cross_bias2 = self.get_theory_pk(
-            z, bias=bias2, smooth_factor=smooth_factor_cross, damping_factor=damping_factor, tracer="dm"
+            z,
+            bias=bias2,
+            smooth_factor=smooth_factor_cross,
+            damping_factor=damping_factor,
+            tracer="dm",
         )[1]
 
         if reverse_rsd and rsd:
@@ -802,17 +866,17 @@ class ComputeModelsCoLoRe(ReadCoLoRe):
             logger.debug("Returning monopole")
             return (
                 pk_l
-                + (f ** 2 / 5) * rsd * rsd2 * pk_rsd
+                + (f**2 / 5) * rsd * rsd2 * pk_rsd
                 + (f / 3) * (rsd2 * pk_cross_bias1 + rsd * pk_cross_bias2)
             )
         if n == 2:
             logger.debug("Returning quadrupole")
-            return (4 * f ** 2 / 7) * rsd * rsd2 * pk_rsd + (2 * f / 3) * (
+            return (4 * f**2 / 7) * rsd * rsd2 * pk_rsd + (2 * f / 3) * (
                 rsd2 * pk_cross_bias1 + rsd * pk_cross_bias2
             )
         if n == 4:
             logger.debug("Returning hexadecapole")
-            return (8 * f ** 2 / 35) * rsd * rsd2 * pk_rsd
+            return (8 * f**2 / 35) * rsd * rsd2 * pk_rsd
 
     def get_npole(
         self,
@@ -913,8 +977,8 @@ class ComputeModelsCoLoRe(ReadCoLoRe):
                 'Method for combining Nz should be in ("CoLoRe", "master_file", "Nz_file")'
             )
 
-        norm_Nz2 = 1 / (z_widths * (Nz ** 2).sum())
-        Nz2 = norm_Nz2 * Nz ** 2
+        norm_Nz2 = 1 / (z_widths * (Nz**2).sum())
+        Nz2 = norm_Nz2 * Nz**2
 
         logger.debug("Getting npoles for each of the redshift bins")
         if mode == "pk":
