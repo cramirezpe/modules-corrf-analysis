@@ -29,6 +29,20 @@ class TestComputePk(unittest.TestCase):
             if _npole_file.is_file():
                 os.remove(_npole_file.resolve())
 
+
+    def test_compute_pk_rebin(self):
+        pkcomp = PKComputations(self.test_files, 1, self.test_files / "param.cfg", rsd=False, pk_n_bins=10)
+
+        for pole in 0, 2:
+            pk = pkcomp.compute_npole(pole)
+
+            target = np.loadtxt(
+                self.test_files
+                / "npole_files"
+                / f"pk_data_src1_{pole}_nbins_10.dat"
+            )
+            np.testing.assert_equal(pk, target)
+
     def test_compute_pk_extra_fields(self):
         for field, name in ((0, "gaussian"), (-1, "nonlinear"), (-2, "eta")):
             pkcomp = PKComputations(self.test_files, field, self.test_files / "param.cfg") 

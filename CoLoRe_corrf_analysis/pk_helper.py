@@ -45,6 +45,7 @@ class PKComputations:
         source: int = 1,
         param_cfg: Optional[Path | str] = None,
         rsd: bool = False,
+        pk_n_bins: Optional[int] = None,
         label: str = "",
     ):
         """Class to handle results from CoLoRe in snapshot. Computing PK.
@@ -55,6 +56,7 @@ class PKComputations:
                 Use 0 for linear density field and -1 for non-linear density field.
             param_cfg (str or Path, optional): Path to param_cfg file. (Default: None).
             rsd (bool, optional): Whether to use RSD. (Default: False).
+            pk_n_bins (int, optional): Number of bins of the pk measurement, default is ngrid // 2
             label (str, optional): Label the results object. (Default: '').
         """
         self.box_dir = Path(box_dir)
@@ -83,6 +85,11 @@ class PKComputations:
 
         self.ngrid = self.param_cfg["field_par"]["n_grid"]
         self.lbox = self.param_cfg["global"]["l_box"]
+
+        if pk_n_bins is None:
+            self.pk_n_bins = self.ngrid // 2
+        else:
+            self.pk_n_bins = int(pk_n_bins)
 
     def read_grid(self) -> np.ndarray:
         if self.source == 0:
@@ -123,18 +130,24 @@ class PKComputations:
 
     @property
     def k(self) -> np.ndarray:
-        kb = np.linspace(0, self.ngrid * np.pi / self.lbox, self.ngrid // 2 + 1)
+        kb = np.linspace(0, self.ngrid * np.pi / self.lbox, self.pk_n_bins + 1)
         return 0.5 * (kb[1:] + kb[:-1])[1:]
 
-    def compute_npole(self, n: int) -> np.ndarray:
+    def compute_npole(self, n: int, pk_n_bins: Optional[int] = None) -> np.ndarray:
         """Compute multipoles by reading the grid files. Multipoles will be saved to file in order to speed up analysis (if possible).
 
         Args:
             n (int): Multipole to return.
+            pk_n_bins (int): Number of bins of the pk measurement, default is ngrid // 2
 
         Returns:
             multipole as 1D array of length len(self.k)
         """
+        if self.pk_n_bins != self.ngrid // 2:
+            nbins_string = f"_nbins_{self.pk_n_bins}"
+        else:
+            nbins_string = ""
+
         if self.source == 0:
             name = "gaussian"
         elif self.source == -1:
@@ -146,7 +159,7 @@ class PKComputations:
             if self.rsd:
                 name += "_rsd"
 
-        file = self.box_dir / f"pk_data_{name}_{n}.dat"
+        file = self.box_dir / f"pk_data_{name}_{n}{nbins_string}.dat"
 
         if file.is_file():
             try:
@@ -187,13 +200,13 @@ class PKComputations:
                 wmu = 0.125 * (35 * mu**4 - 30 * mu**2 + 3)
         sm, kb = np.histogram(
             ks.flatten(),
-            bins=self.ngrid // 2,
+            bins=self.pk_n_bins,
             range=(0, self.ngrid * np.pi / self.lbox),
             weights=(np.real(dk * np.conjugate(dk)) * wmu).flatten(),
         )
         ncell, _ = np.histogram(
             ks.flatten(),
-            bins=self.ngrid // 2,
+            bins=self.pk_n_bins,
             range=(0, self.ngrid * np.pi / self.lbox),
         )
         npole = (2 * n + 1) * sm / (ncell * self.lbox**3)
