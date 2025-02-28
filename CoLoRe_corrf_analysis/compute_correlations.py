@@ -132,6 +132,12 @@ def getArgs():  # pragma: no cover
         help="Modify the quantity of generated randoms by this factor.",
     )
 
+    parser.add_argument(
+        "--skip-randoms",
+        action="store_true",
+        help="Do not generate randoms. Only generates DD counts.",
+    )
+
     parser.add_argument("--out-dir", type=Path, required=True, help="Output dir")
 
     parser.add_argument("--nthreads", type=int, default=256)
@@ -451,7 +457,7 @@ class FieldData:
 
         z_gen = interp1d(p, z_sort)
 
-        NRAND = int(len(data.data)*factor)
+        NRAND = int(len(data.data) * factor)
         self.define_data_from_size(NRAND)
 
         logger.info("Interpolating redshift")
@@ -722,20 +728,23 @@ def main(args=None):
             to_compute.add("D1")
             to_compute.add("D2")
 
-        if "RR" not in available_counts:
-            to_compute.add("R1")
-            to_compute.add("R2")
+        if not args.skip_randoms:
+            if "RR" not in available_counts:
+                to_compute.add("R1")
+                to_compute.add("R2")
 
-        if "RD" not in available_counts:
-            to_compute.add("R1")
-            to_compute.add("D2")
+            if "RD" not in available_counts:
+                to_compute.add("R1")
+                to_compute.add("D2")
 
-        if "DR" not in available_counts:
-            to_compute.add("R2")
-            to_compute.add("D1")
+            if "DR" not in available_counts:
+                to_compute.add("R2")
+                to_compute.add("D1")
     else:  # Auto-correlation
         to_compute.add("D1")
-        if ("RR" not in available_counts) or ("DR" not in available_counts):
+        if (not args.skip_randoms) and (
+            ("RR" not in available_counts) or ("DR" not in available_counts)
+        ):
             to_compute.add("R1")
 
     if (args.out_dir / "sizes.json").is_file():
@@ -849,7 +858,9 @@ def main(args=None):
                 args.pixel_mask,
                 args.nside,
             )
-            rand2.compute_cov(f)
+
+            if args.grid_format == "lightcone":
+                rand2.compute_cov(f)
         elif args.generate_randoms2:  # pragma: no cover
             rand2 = FieldData(
                 args.randoms2,
@@ -874,7 +885,7 @@ def main(args=None):
                     )
                 rand2.compute_cov(f)
             else:
-                rand.define_data_from_size(len(data.data))
+                rand2.define_data_from_size(len(data2.data))
 
             rand2.generate_random_positions(  # will also work for cartesian
                 pixel_mask=args.pixel_mask,
@@ -886,6 +897,7 @@ def main(args=None):
                 rand2.store_data_in_cat(Path(args.out_dir) / (rand2.label + ".fits"))
             if args.grid_format == "lightcone":
                 rand2.compute_cov(f)
+            data_to_use.add(rand2)
         else:
             rand2 = rand
             data_to_use.add(rand2)
@@ -905,9 +917,16 @@ def main(args=None):
             obj.label, "\n\t".join([str(cat) for cat in obj.cat])
         )
         sizes[obj.label] = len(obj.data)
+    sizes["Box"] = args.box_size
 
     info_file.write_text(text)
 
+    if args.skip_randoms:
+        sizes["Randoms"] =  sizes["Data"]
+
+        if "Data2" in sizes:
+            sizes["Randoms2"] = sizes["Data2"]
+ 
     with open(args.out_dir / "sizes.json", "w") as json_file:
         json.dump(sizes, json_file)
 
@@ -948,122 +967,128 @@ def main(args=None):
             )
         np.savetxt(args.out_dir / f"DD.dat", DD)
 
-    if "DR" not in available_counts:
-        logger.info("Computing DR...")
-        if args.grid_format == "lightcone":
-            DR = DDsmu_mocks(
-                autocorr=0,
-                cosmology=2,
-                nthreads=args.nthreads,
-                mu_max=args.mu_max,
-                nmu_bins=args.nmu_bins,
-                binfile=bins2p,
-                RA1=data.data["RA"],
-                DEC1=data.data["DEC"],
-                CZ1=data.cov,
-                RA2=rand2.data["RA"],
-                DEC2=rand2.data["DEC"],
-                CZ2=rand2.cov,
-                is_comoving_dist=True,
-                verbose=True,
-            )
-        else:  # snapshot
-            DR = DDsmu(
-                autocorr=0,
-                nthreads=args.nthreads,
-                mu_max=args.mu_max,
-                nmu_bins=args.nmu_bins,
-                binfile=bins2p,
-                X1=data.data["X"],
-                Y1=data.data["Y"],
-                Z1=data.data["Z"],
-                X2=rand2.data["X"],
-                Y2=rand2.data["Y"],
-                Z2=rand2.data["Z"],
-                boxsize=args.box_size,
-                verbose=True,
-            )
-        np.savetxt(args.out_dir / f"DR.dat", DR)
+    if not args.skip_randoms:
+        if "DR" not in available_counts:
+            logger.info("Computing DR...")
+            if args.grid_format == "lightcone":
+                DR = DDsmu_mocks(
+                    autocorr=0,
+                    cosmology=2,
+                    nthreads=args.nthreads,
+                    mu_max=args.mu_max,
+                    nmu_bins=args.nmu_bins,
+                    binfile=bins2p,
+                    RA1=data.data["RA"],
+                    DEC1=data.data["DEC"],
+                    CZ1=data.cov,
+                    RA2=rand2.data["RA"],
+                    DEC2=rand2.data["DEC"],
+                    CZ2=rand2.cov,
+                    is_comoving_dist=True,
+                    verbose=True,
+                )
+            else:  # snapshot
+                DR = DDsmu(
+                    autocorr=0,
+                    nthreads=args.nthreads,
+                    mu_max=args.mu_max,
+                    nmu_bins=args.nmu_bins,
+                    binfile=bins2p,
+                    X1=data.data["X"],
+                    Y1=data.data["Y"],
+                    Z1=data.data["Z"],
+                    X2=rand2.data["X"],
+                    Y2=rand2.data["Y"],
+                    Z2=rand2.data["Z"],
+                    boxsize=args.box_size,
+                    verbose=True,
+                )
+            np.savetxt(args.out_dir / f"DR.dat", DR)
 
-    if "RR" not in available_counts:
-        logger.info("Computing RR...")
-        if args.grid_format == "lightcone":
-            RR = DDsmu_mocks(
-                autocorr=rand == rand2,
-                cosmology=2,
-                nthreads=args.nthreads,
-                mu_max=args.mu_max,
-                nmu_bins=args.nmu_bins,
-                binfile=bins2p,
-                RA1=rand.data["RA"],
-                DEC1=rand.data["DEC"],
-                CZ1=rand.cov,
-                RA2=rand2.data["RA"],
-                DEC2=rand2.data["DEC"],
-                CZ2=rand2.cov,
-                is_comoving_dist=True,
-                verbose=True,
-            )
-        else:  # snapshot
-            RR = DDsmu(
-                autocorr=rand == rand2,
-                nthreads=args.nthreads,
-                mu_max=args.mu_max,
-                nmu_bins=args.nmu_bins,
-                binfile=bins2p,
-                X1=rand.data["X"],
-                Y1=rand.data["Y"],
-                Z1=rand.data["Z"],
-                X2=rand2.data["X"],
-                Y2=rand2.data["Y"],
-                Z2=rand2.data["Z"],
-                boxsize=args.box_size,
-                verbose=True,
-            )
-        np.savetxt(args.out_dir / f"RR.dat", RR)
+        if "RR" not in available_counts:
+            logger.info("Computing RR...")
+            if args.grid_format == "lightcone":
+                RR = DDsmu_mocks(
+                    autocorr=rand == rand2,
+                    cosmology=2,
+                    nthreads=args.nthreads,
+                    mu_max=args.mu_max,
+                    nmu_bins=args.nmu_bins,
+                    binfile=bins2p,
+                    RA1=rand.data["RA"],
+                    DEC1=rand.data["DEC"],
+                    CZ1=rand.cov,
+                    RA2=rand2.data["RA"],
+                    DEC2=rand2.data["DEC"],
+                    CZ2=rand2.cov,
+                    is_comoving_dist=True,
+                    verbose=True,
+                )
+            else:  # snapshot
+                RR = DDsmu(
+                    autocorr=rand == rand2,
+                    nthreads=args.nthreads,
+                    mu_max=args.mu_max,
+                    nmu_bins=args.nmu_bins,
+                    binfile=bins2p,
+                    X1=rand.data["X"],
+                    Y1=rand.data["Y"],
+                    Z1=rand.data["Z"],
+                    X2=rand2.data["X"],
+                    Y2=rand2.data["Y"],
+                    Z2=rand2.data["Z"],
+                    boxsize=args.box_size,
+                    verbose=True,
+                )
+            np.savetxt(args.out_dir / f"RR.dat", RR)
 
-    if "RD" not in available_counts and data2 != data:
-        logger.info("Computing RD...")
-        if args.grid_format == "lightcone":
-            RD = DDsmu_mocks(
-                autocorr=0,
-                cosmology=2,
-                nthreads=args.nthreads,
-                mu_max=args.mu_max,
-                nmu_bins=args.nmu_bins,
-                binfile=bins2p,
-                RA1=rand.data["RA"],
-                DEC1=rand.data["DEC"],
-                CZ1=rand.cov,
-                RA2=data2.data["RA"],
-                DEC2=data2.data["DEC"],
-                CZ2=data2.cov,
-                is_comoving_dist=True,
-                verbose=True,
-            )
-        else:  # snapshot
-            RD = DDsmu(
-                autocorr=0,
-                nthreads=args.nthreads,
-                mu_max=args.mu_max,
-                nmu_bins=args.nmu_bins,
-                binfile=bins2p,
-                X1=rand.data["X"],
-                Y1=rand.data["Y"],
-                Z1=rand.data["Z"],
-                X2=data2.data["X"],
-                Y2=data2.data["Y"],
-                Z2=data2.data["Z"],
-                boxsize=args.box_size,
-                verbose=True,
-            )
-        np.savetxt(args.out_dir / f"RD.dat", RD)
+        if "RD" not in available_counts and data2 != data:
+            logger.info("Computing RD...")
+            if args.grid_format == "lightcone":
+                RD = DDsmu_mocks(
+                    autocorr=0,
+                    cosmology=2,
+                    nthreads=args.nthreads,
+                    mu_max=args.mu_max,
+                    nmu_bins=args.nmu_bins,
+                    binfile=bins2p,
+                    RA1=rand.data["RA"],
+                    DEC1=rand.data["DEC"],
+                    CZ1=rand.cov,
+                    RA2=data2.data["RA"],
+                    DEC2=data2.data["DEC"],
+                    CZ2=data2.cov,
+                    is_comoving_dist=True,
+                    verbose=True,
+                )
+            else:  # snapshot
+                RD = DDsmu(
+                    autocorr=0,
+                    nthreads=args.nthreads,
+                    mu_max=args.mu_max,
+                    nmu_bins=args.nmu_bins,
+                    binfile=bins2p,
+                    X1=rand.data["X"],
+                    Y1=rand.data["Y"],
+                    Z1=rand.data["Z"],
+                    X2=data2.data["X"],
+                    Y2=data2.data["Y"],
+                    Z2=data2.data["Z"],
+                    boxsize=args.box_size,
+                    verbose=True,
+                )
+            np.savetxt(args.out_dir / f"RD.dat", RD)
+
+        if data == data2 and "RD" not in available_counts:
+            shutil.copyfile(args.out_dir / f"DR.dat", args.out_dir / f"RD.dat")
 
     if logging.root.level <= logging.DEBUG:  # pragma: no cover
         logger.debug(f"Relative elapsed time: {time.time() - start_computation}")
 
-    if data == data2 and "RD" not in available_counts:
-        shutil.copyfile(args.out_dir / f"DR.dat", args.out_dir / f"RD.dat")
+    if args.grid_format == "snapshot" and args.skip_randoms:
+        logger.info("Estimating cubic uniform randoms")
+        CFComp = CFComputations(args.out_dir)
+        CFComp.estimate_cubic_randoms()
 
     if args.compute_npoles != None:  # pragma: no cover
         logger.info(f"Computing npoles:")

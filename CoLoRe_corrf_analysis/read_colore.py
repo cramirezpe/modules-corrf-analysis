@@ -335,7 +335,9 @@ class ReadCoLoRe:
         Returns:
             Interp1d object for bias.
         """
-        if self.snapshot:
+        if self.source == 0:
+            return interp1d([0, 10], [1,1], fill_value="extrapolate")
+        elif self.snapshot:
             bias = self.param_cfg[f"srcs{self.source}"]["bias"]
             return interp1d([0, 10], [bias, bias], fill_value="extrapolate")
         else:
@@ -441,7 +443,7 @@ class ReadCoLoRe:
         Returns:
             logarithmic growth rate as float.
         """
-        if read_file:
+        if read_file and self.source != 0:
             dlogDdz = self.dlogDdz
 
             f = -dlogDdz(z) * (1 + z)

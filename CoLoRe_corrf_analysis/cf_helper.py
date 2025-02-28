@@ -48,35 +48,19 @@ class CFComputations:
     @property
     def DD(self):
         return np.loadtxt(self.results_path / "DD.dat", dtype=self.dtypes)
-        # try:
-        #     return np.loadtxt(self.results_path / "DD.dat", dtype=self.dtypes)
-        # except OSError:
-        #     return np.loadtxt(self.results_path / "0_DD.dat", dtype=self.dtypes)
 
     @property
     def DR(self):
         return np.loadtxt(self.results_path / "DR.dat", dtype=self.dtypes)
-        # try:
-        #     return np.loadtxt(self.results_path / "DR.dat", dtype=self.dtypes)
-        # except OSError:
-        #     return np.loadtxt(self.results_path / "0_DR.dat", dtype=self.dtypes)
 
     @property
     def RR(self):
         return np.loadtxt(self.results_path / "RR.dat", dtype=self.dtypes)
-        # try:
-        #     return np.loadtxt(self.results_path / "RR.dat", dtype=self.dtypes)
-        # except OSError:
-        #     return np.loadtxt(self.results_path / "0_RR.dat", dtype=self.dtypes)
 
     @property
     def RD(self):
         try:
             return np.loadtxt(self.results_path / "RD.dat", dtype=self.dtypes)
-            # try:
-            #     return np.loadtxt(self.results_path / "RD.dat", dtype=self.dtypes)
-            # except OSError:
-            #     return np.loadtxt(self.results_path / "0_RD.dat", dtype=self.dtypes)
         except OSError:  # pragma: no cover
             np.savetxt(self.results_path / "RD.dat", self.DR)
             return self.RD
@@ -85,7 +69,7 @@ class CFComputations:
     def r(self):
         """Return savg"""
         return self.savg
-        
+
     @property
     def savg(self):
         """Read savg (separations in r for the data"""
@@ -122,6 +106,35 @@ class CFComputations:
             cf_array.append(self.cf[self.DD["smin"] == smin])
         return cf_array
 
+    def estimate_cubic_randoms(self):
+        """Estimate cubic uniform randoms and write them to file for DR, RD and RR"""
+        smin = self.DD["smin"]
+        smax = self.DD["smax"]
+
+        N1 = self.sizes["Data"]
+        N2 = self.sizes["Data2"]
+        NR1 = N1
+        NR2 = N2
+
+        V_box = self.sizes["Box"]**3
+
+        V_shell = 4 * np.pi / 3 * (smax**3 - smin**3)
+
+        prefactor = V_shell / len(np.unique(self.DD["mu_max"])) / V_box
+
+        RR_factor = (NR1 * NR2)
+        DR_factor = (N1*NR2)
+        RD_factor = (N2*NR1)
+
+        for name, factor in zip(["RR", "DR", "RD"], [RR_factor, DR_factor, RD_factor]):
+            pairs = np.array(
+                list(
+                    zip(smin, smax, self.DD["savg"], self.DD["mu_max"], prefactor*factor, self.DD["weightavg"])
+                ),
+                dtype=self.DD.dtype,
+            )
+            np.savetxt(self.results_path / f"{name}.dat", pairs)
+
     def compute_npole(self, n):
         """Compute multipoles by using halotools utility. Multipoles will be saved to file in order to speed up analysis (if possible).
 
@@ -148,15 +161,17 @@ class CFComputations:
             file = self.results_path / f"npole_{pole}.dat"
             file.unlink(missing_ok=True)
 
+
 class CFComputationsAbacus:
     """Simple class to read correlation measurements from Abacus results."""
-    def __init__(self, path= None):
+
+    def __init__(self, path=None):
         self.path = path
         self.npoles = dict()
 
         try:
             r, _0, _2, _4 = np.loadtxt(path, unpack=True)
-            self.npoles[0] = _0 
+            self.npoles[0] = _0
             self.npoles[2] = _2
             self.npoles[4] = _4
         except ValueError:
@@ -164,12 +179,13 @@ class CFComputationsAbacus:
             self.npoles[0] = _0
             self.npoles[2] = np.zeros_like(_0)
             self.npoles[4] = np.zeros_like(_0)
-        
+
         self.r = r
         self.savg = r
 
     def compute_npole(self, n):
         return self.npoles[n]
+
 
 def main():  # pragma: no cover
     import argparse
